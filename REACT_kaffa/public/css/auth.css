@@ -1,0 +1,30 @@
+/* ═══════════════════════════════════════════════════════════════
+   ARCHIVO: auth.css
+   PROPÓSITO: Estilos específicos para páginas de autenticación
+   (Login y Registro) - Toggle de visibilidad de contraseña
+   ═══════════════════════════════════════════════════════════════ */
+
+.password-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-wrapper input {
+  width: 100%;
+  padding-right: 40px;
+  box-sizing: border-box;
+}
+
+.password-wrapper i {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #666;
+  z-index: 10;
+}
+
+.password-wrapper i:hover {
+  color: #333;
+}

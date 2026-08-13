@@ -1,0 +1,96 @@
+/* Estilos globales mínimos.
+   Las variables de diseño (variables.css) se importan en main.jsx.
+   El resto de hojas de estilo se cargan por ruta (ver hooks/useStyles.js),
+   replicando el comportamiento original donde cada página HTML cargaba solo sus CSS. */
+
+.auth-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: #e74c3c;
+}
+
+/* ─────────────────────────────────────────────
+   Layout del Panel de Barista
+   dashboard.css aplica `body { display:flex; height:100vh }`.
+   #root es su único hijo: debe crecer y ocupar toda la ventana
+   para que el wrapper flex funcione sin apilar los bloques.
+   ───────────────────────────────────────────── */
+#root {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100vh;
+}
+
+.barista-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg, #0d1a10);
+}
+
+.barista-sidebar {
+  width: 260px;
+  min-width: 260px;
+  min-height: 100vh;
+  height: 100%;
+  background-color: #12291e;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.barista-sidebar .sidebar {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.barista-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg, #0d1a10);
+}
+
+/* En pantallas pequeñas `.sidebar` pasa a `position: fixed`
+   (dashboard-base.css) y queda fuera del flujo: el wrapper se colapsa.
+   Se restaura el ancho fijo del panel lateral deslizante. */
+.barista-content > .content-section.active {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+
+@media (max-width: 900px) {
+  .barista-sidebar .sidebar {
+    width: 260px;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Layout del Dashboard Cliente
+   cliente.css también aplica `body { display:flex; height:100vh }`
+   con `.main-content { flex:1 }`, por lo que necesita un wrapper
+   flex (igual que el panel de Barista) en lugar de confiar en body.
+   ───────────────────────────────────────────── */
+.cliente-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.cliente-container > .sidebar {
+  flex-shrink: 0;
+}
+
+.cliente-container > .main-content {
+  flex: 1;
+  min-width: 0;
+}

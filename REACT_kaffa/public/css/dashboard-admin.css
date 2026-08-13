@@ -1,0 +1,118 @@
+/* ─────────────────────────────────────────────
+   KAFFA - Dashboard Admin (específico)
+   ───────────────────────────────────────────── */
+
+/* ── LAYOUT ── */
+.page { display: none; }
+.page.show { display: block; }
+
+/* ── KPI CARDS GRID ── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.cards-grid .card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-head h3 {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-val {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--text, #1a3116);
+  letter-spacing: -0.5px;
+}
+
+.card-trend {
+  font-size: 0.78rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.card-trend.green { color: var(--success, #27ae60); }
+.card-trend.red { color: var(--danger, #e74c3c); }
+
+/* ── CHARTS GRID ── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.box {
+  background: var(--surface, #fff);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow-sm, 0 2px 4px rgba(0,0,0,0.05));
+}
+
+.box-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.box-top h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text, #1a3116);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── PROFILE ── */
+
+/* ── PEDIDOS: SELECT DE ESTADO ── */
+.pedido-estado-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border, rgba(0,0,0,0.12));
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  background: var(--surface, #fff);
+  color: var(--text, #1a3116);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.pedido-estado-select:focus {
+  border-color: var(--primary, #39A900);
+  box-shadow: 0 0 0 3px rgba(57,169,0,0.12);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  .charts-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  .cards-grid { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 600px) {
+  .cards-grid { grid-template-columns: 1fr; }
+  .box { padding: 14px; }
+}

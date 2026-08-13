@@ -1,0 +1,359 @@
+/* ─────────────────────────────────────────────
+   KAFFA - Dashboard Cliente (específico)
+   ───────────────────────────────────────────── */
+
+body {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── HEADER ── */
+.header {
+  height: 64px;
+  background: var(--surface, #fff);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border, rgba(0,0,0,0.08));
+  flex-shrink: 0;
+}
+
+.menu-toggle {
+  display: none;
+  cursor: pointer;
+  font-size: 24px;
+  color: var(--text, #1a3116);
+}
+
+/* ── HEADER ICONS & PROFILE ── */
+.header-icons {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.cart-btn {
+  position: relative;
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--text, #1a3116);
+}
+
+.cart-badge {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  background: var(--danger, #e74c3c);
+  color: #fff;
+  font-size: 10px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* profile-dropdown and dropdown-item are now in dashboard-base.css */
+
+/* ── CONTENT AREA ── */
+.content-area {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.section {
+  display: none;
+  animation: fadeIn 0.25s;
+  height: 100%;
+}
+
+.section.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── PRODUCT GRID ── */
+.grid-products {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 18px;
+}
+
+.product-card {
+  background: var(--surface, #fff);
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.04));
+  border: 1px solid var(--border, rgba(0,0,0,0.06));
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.1));
+}
+
+.product-card img {
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.product-card h3 {
+  font-size: 1.05rem;
+  color: var(--text, #1a3116);
+  margin-bottom: 4px;
+}
+
+.product-card .product-price {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--primary, #39A900);
+  margin-bottom: 8px;
+}
+
+/* ── BUTTON (para JS) ── */
+.btn {
+  background: var(--primary, #39A900);
+  color: #fff;
+  border: none;
+  padding: 9px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+
+.btn:hover { background: var(--primary-dark, #2D8A00); }
+
+/* ── CHAT ── */
+.chat-layout {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface, #fff);
+  border-radius: 10px;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border, rgba(0,0,0,0.08));
+}
+
+.chat-header {
+  padding: 14px 16px;
+  background: var(--color-casi-negro, #293f2c);
+  color: #fff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-header img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.chat-messages {
+  flex: 1;
+  background: var(--surface-alt, #f5f5f5);
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+[data-theme="dark"] .chat-messages { background: var(--surface-alt); }
+
+.msg {
+  padding: 10px 14px;
+  border-radius: 10px;
+  max-width: 75%;
+  font-size: 14px;
+  line-height: 1.4;
+  position: relative;
+}
+
+.msg-barista {
+  background: var(--surface, #fff);
+  align-self: flex-start;
+  border-top-left-radius: 0;
+  color: var(--text, #1a3116);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.msg-user {
+  background: var(--primary, #39A900);
+  align-self: flex-end;
+  border-top-right-radius: 0;
+  color: #fff;
+}
+
+[data-theme="dark"] .msg-barista {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.chat-input {
+  padding: 12px 16px;
+  background: var(--surface, #fff);
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid var(--border, rgba(0,0,0,0.08));
+}
+
+.chat-input input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid var(--border, rgba(0,0,0,0.1));
+  border-radius: 20px;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  background: var(--bg, #fff);
+  color: var(--text, #1a3116);
+}
+
+.chat-send-btn {
+  background: var(--primary, #39A900);
+  color: #fff;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.chat-send-btn:hover { background: var(--primary-dark, #2D8A00); }
+
+/* ── CHAT UNREAD / META ── */
+.chat-unread-badge {
+  background: var(--danger, #e74c3c);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 10px;
+  padding: 0 5px;
+  text-align: center;
+  margin-left: auto;
+}
+
+.msg .meta {
+  font-size: 0.65rem;
+  opacity: 0.6;
+  margin-top: 4px;
+  text-align: right;
+}
+
+/* ── PAYMENT ── */
+.payment-options {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.payment-opt {
+  flex: 1;
+  border: 1.5px solid var(--border, rgba(0,0,0,0.1));
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.payment-opt:hover { border-color: var(--primary, #39A900); }
+
+.payment-opt.selected {
+  border-color: var(--primary, #39A900);
+  background: var(--primary-bg, #f0f7f0);
+  color: var(--primary, #39A900);
+  font-weight: 600;
+}
+
+.upload-box {
+  border: 2px dashed var(--border, rgba(0,0,0,0.15));
+  padding: 20px;
+  text-align: center;
+  border-radius: 8px;
+  margin-top: 10px;
+  cursor: pointer;
+  background: var(--surface-alt, #fafafa);
+  transition: 0.2s;
+}
+
+.upload-box:hover { border-color: var(--primary, #39A900); }
+
+.preview-img {
+  width: 100%;
+  margin-top: 10px;
+  border-radius: 5px;
+  display: none;
+}
+
+.cart-item {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-light, rgba(0,0,0,0.06));
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .menu-toggle { display: block; }
+  .header-icons { gap: 12px; }
+}
+
+@media (max-width: 500px) {
+  .grid-products { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .content-area { padding: 12px; }
+  .modal-content { padding: 20px; width: 95%; }
+}
