@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
+import RequireRole from './components/RequireRole';
 import Home from './pages/Home';
 import Menu from './pages/Menu';
 import Eventos from './pages/Eventos';
@@ -31,12 +32,33 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/registro" element={<Registro />} />
 
-      {/* Dashboards standalone */}
-      <Route path="/cliente-dashboard" element={<DashboardCliente />} />
-      <Route path="/admin-dashboard" element={<DashboardAdmin />} />
+      {/* Dashboards protegidos por rol */}
+      <Route
+        path="/cliente-dashboard"
+        element={
+          <RequireRole role="cliente">
+            <DashboardCliente />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/admin-dashboard"
+        element={
+          <RequireRole role="admin">
+            <DashboardAdmin />
+          </RequireRole>
+        }
+      />
 
       {/* Panel de Barista: Layout con sidebar + contenido (Outlet) */}
-      <Route path="/barista-dashboard" element={<BaristaLayout />}>
+      <Route
+        path="/barista-dashboard"
+        element={
+          <RequireRole role="barista">
+            <BaristaLayout />
+          </RequireRole>
+        }
+      >
         <Route index element={<Navigate to="pedidos" replace />} />
         <Route path="pedidos" element={<PedidosView />} />
         <Route path="inventario" element={<InventarioView />} />

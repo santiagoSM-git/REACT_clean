@@ -3,31 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useStyles } from '../../hooks/useStyles';
 import { useDashboardTheme } from '../../hooks/useDashboardTheme';
 import { Auth } from '../../lib/auth';
-import { Storage } from '../../lib/storage';
-import { ProductosStore } from '../../lib/productos-store';
-import { formatCurrency, showToast } from '../../lib/utils';
+import { Api } from '../../lib/api';
 
-function obtenerProductosCliente() {
-  return ProductosStore.obtenerTodos().map((p) => ({
-    id: p.id,
-    name: p.nombre,
-    price: Number(p.precio) || 0,
-    img: p.imagen,
-    descripcion: p.descripcion || '',
-  }));
-}
+const ESTADOS_CLIENTE = {
+  pendiente: { label: 'Pendiente', color: '#f39c12', icon: <i className="fa-solid fa-hourglass-half"></i> },
+  pagado: { label: 'Pagado · En preparación', color: '#3498db', icon: <i className="fa-solid fa-rotate"></i> },
+  cancelado: { label: 'Cancelado', color: '#e74c3c', icon: <i className="fa-solid fa-ban"></i> },
+  entregado: { label: 'Entregado', color: '#27ae60', icon: <i className="fa-solid fa-circle-check"></i> },
+};
 
-function formatearPrecio(valor) {
-  const n = typeof valor === 'number' ? valor : parseFloat(String(valor).replace(/[^\d.-]/g, ''));
-  return formatCurrency(Number.isNaN(n) ? 0 : n);
-}
-
-function obtenerMiUsername(u) {
-  return u.username || u.nombre || 'Cliente';
-}
-
-function leerNotificaciones() {
-  return JSON.parse(localStorage.getItem('kaffaNotificaciones')) || [];
+function money(v) {
+  const n = Number(v) || 0;
+  return '$' + n.toLocaleString('es-CO');
 }
 
 function DashboardCliente() {
@@ -40,127 +27,108 @@ function DashboardCliente() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Productos
-  const [cart, setCart] = useState([]);
-  const [currentProduct, setCurrentProduct] = useState(null);
-  const [currentQty, setCurrentQty] = useState(1);
-  const [notes, setNotes] = useState('');
-  const [showProductModal, setShowProductModal] = useState(false);
+  // Catálogo
+  const [productos, setProductos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [categoriaActiva, setCategoriaActiva] = useState(null);
+  const [medios, setMedios] = useState([]);
 
-  // Carrito / pago
+  // Detalle de producto
+  const [currentProduct, setCurrentProduct] = useState(null);
+
+  // Carrito + pago
+  const [cart, setCart] = useState([]);
   const [showCartModal, setShowCartModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [proofImageBase64, setProofImageBase64] = useState(null);
+  const [paymentMedioId, setPaymentMedioId] = useState('');
+  const [payOnline, setPayOnline] = useState(false);
+  const [comprobanteUrl, setComprobanteUrl] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
   // Pedidos y chat
   const [orders, setOrders] = useState([]);
   const [messages, setMessages] = useState([]);
   const [unreadChat, setUnreadChat] = useState(0);
   const [chatInput, setChatInput] = useState('');
-  const [now, setNow] = useState(Date.now());
+  const [chatContacto, setChatContacto] = useState(null);
 
-  const prevUnread = useRef(0);
   const chatMessagesRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const profileFileInputRef = useRef(null);
 
   const [profileOpen, setProfileOpen] = useState(false);
-  const [profile, setProfile] = useState({
-    name: user?.nombre || 'Cliente',
-    email: user?.email || '',
-  });
+  const [profile, setProfile] = useState({ name: '', email: '', password: '', avatar: null });
+  const [savingProfile, setSavingProfile] = useState(false);
+  const profileFileInputRef = useRef(null);
 
-  // ── Guard de autenticación ──
+  // ── Catálogo ──
   useEffect(() => {
-    if (!Auth.isLoggedIn() || !Auth.requireCliente()) {
-      alert('⚠️ Debes iniciar sesión como cliente para acceder.');
-      navigate('/login', { replace: true });
-    }
-  }, [navigate]);
-
-  // ── Carga inicial ──
-  useEffect(() => {
-    const u = Auth.getCurrentUser() || { nombre: 'Cliente', role: 'cliente' };
-    setUser(u);
+    Promise.all([Api.get('/productos', { per_page: 100, activo: 1 }), Api.get('/categorias', { per_page: 100 }), Api.get('/medios-pago', { per_page: 100 })])
+      .then(([pResp, cResp, mResp]) => {
+        setProductos(Api.unwrapList(pResp).items);
+        setCategorias(Api.unwrapList(cResp).items);
+        setMedios(Api.unwrapList(mResp).items);
+      })
+      .catch(() => {});
   }, []);
 
-  // ── Polling: historial de pedidos ──
+  // ── Mis pedidos (scope por cliente en el backend) ──
   useEffect(() => {
-    const loadHistory = () => {
-      const all = Storage.getOrders();
-      const myOrders = all.filter((o) => o.cliente === user.nombre).reverse();
-      setOrders(myOrders);
-
-      const notifs = leerNotificaciones();
-      const misNotifs = notifs.filter((n) => n.cliente === user.nombre && !n.leida);
-      if (misNotifs.length > 0) {
-        misNotifs.forEach((n) => {
-          const tipo = n.tipo === 'preparacion' ? 'info' : n.tipo === 'listo' ? 'success' : 'error';
-          showToast(n.mensaje, tipo);
-          n.leida = true;
-        });
-        localStorage.setItem('kaffaNotificaciones', JSON.stringify(notifs));
+    const loadHistory = async () => {
+      try {
+        const resp = await Api.get('/pedidos', { per_page: 50 });
+        setOrders(Api.unwrapList(resp).items);
+      } catch {
+        /* sin token aún */
       }
     };
-
     loadHistory();
-    const interval = setInterval(loadHistory, 5000);
+    const interval = setInterval(loadHistory, 10000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, []);
 
-  // ── Polling: chat ──
+  // ── Chat ──
   useEffect(() => {
-    const cargarChat = () => {
-      const conv = Storage.getChat(obtenerMiUsername(user));
-      const msgs = (conv && conv.messages) || [];
-      setMessages(msgs);
-      setUnreadChat((conv && conv.unreadCliente) || 0);
+    const cargarContacto = async () => {
+      try {
+        const resp = await Api.get('/mensajes/contactos');
+        if (Array.isArray(resp) && resp.length) setChatContacto(resp[0]);
+      } catch {
+        /* noop */
+      }
     };
+    cargarContacto();
+  }, []);
 
-    cargarChat();
-    prevUnread.current = (Storage.getChat(obtenerMiUsername(user)) || {}).unreadCliente || 0;
+  useEffect(() => {
+    const cargarChat = async () => {
+      try {
+        const resp = await Api.get('/mensajes');
+        const n = (resp.contactos || []).reduce((s, c) => s + (c.no_leidos || 0), 0);
+        setUnreadChat(n);
+      } catch {
+        /* noop */
+      }
 
-    const chatPoll = setInterval(() => {
-      const n = (Storage.getChat(obtenerMiUsername(user)) || {}).unreadCliente || 0;
-      if (n > prevUnread.current) {
-        const chatSec = document.getElementById('chat');
-        if (!chatSec || !chatSec.classList.contains('active')) {
-          showToast('💬 Nuevo mensaje del barista', 'info');
+      if (chatContacto) {
+        try {
+          const resp = await Api.get('/mensajes', { con: chatContacto.id });
+          setMessages(Api.unwrapList(resp.mensajes).items.slice().reverse());
+          if (section === 'chat') await Api.post('/mensajes/leer', { con: chatContacto.id });
+        } catch {
+          /* noop */
         }
       }
-      prevUnread.current = n;
-      cargarChat();
-    }, 3000);
-
-    return () => clearInterval(chatPoll);
-  }, [user]);
-
-  // ── Cronómetros ──
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Cerrar menú móvil y dropdown al navegar entre secciones
-  useEffect(() => {
-    setSidebarOpen(false);
-    document.body.style.overflow = '';
-    if (section === 'chat') {
-      Storage.marcarChatLeido(obtenerMiUsername(user), 'cliente');
-      const conv = Storage.getChat(obtenerMiUsername(user));
-      setMessages((conv && conv.messages) || []);
-      setUnreadChat(0);
-    }
-  }, [section, user]);
-
-  useEffect(() => {
-    return () => {
-      document.body.style.overflow = '';
     };
-  }, []);
+    cargarChat();
+    const interval = setInterval(cargarChat, 5000);
+    return () => clearInterval(interval);
+  }, [chatContacto, section]);
 
-  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  }, [messages]);
+
   useEffect(() => {
     const onClick = (e) => {
       if (!e.target.closest('.profile-trigger')) setDropdownOpen(false);
@@ -169,165 +137,125 @@ function DashboardCliente() {
     return () => document.removeEventListener('click', onClick);
   }, []);
 
-  // Scroll del chat al final
-  useEffect(() => {
-    if (chatMessagesRef.current) {
-      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  // ── Acciones del modal de producto ──
-  const openProductModal = (id) => {
-    const p = obtenerProductosCliente().find((x) => x.id === id);
-    setCurrentProduct(p);
-    setCurrentQty(1);
-    setNotes('');
-    setShowProductModal(true);
+  const filtrarCategoria = (id) => {
+    setCategoriaActiva(id);
   };
 
-  const changeQty = (n) => {
-    if (currentQty + n > 0) setCurrentQty((q) => q + n);
-  };
+  const listaProductos = categoriaActiva === null ? productos : productos.filter((p) => p.categoria_id == categoriaActiva);
 
+  // ── Carrito / pago ──
   const addToCart = () => {
     if (!currentProduct) return;
-    setCart((prev) => [...prev, { ...currentProduct, qty: currentQty, note: notes, total: currentProduct.price * currentQty }]);
-    setShowProductModal(false);
-    alert('Agregado al carrito');
+    setCart((prev) => [...prev, { ...currentProduct, qty: 1, total: Number(currentProduct.precio_venta) || 0 }]);
+    setCurrentProduct(null);
   };
 
-  const remCart = (idx) => {
-    setCart((prev) => prev.filter((_, i) => i !== idx));
-  };
+  const remCart = (idx) => setCart((prev) => prev.filter((_, i) => i !== idx));
 
   const openPaymentModal = () => {
-    if (cart.length === 0) {
-      alert('Carrito vacío');
-      return;
-    }
+    if (cart.length === 0) return alert('Carrito vacío');
     setShowCartModal(false);
-    setPaymentMethod('cash');
-    setProofImageBase64(null);
+    setPayOnline(false);
+    setPaymentMedioId(medios.find((m) => !m.es_virtual)?.id || medios[0]?.id || '');
+    setComprobanteUrl('');
     setShowPaymentModal(true);
   };
 
-  const handleProof = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const r = new FileReader();
-    r.onload = (ev) => setProofImageBase64(ev.target.result);
-    r.readAsDataURL(file);
-  };
+  const medioSeleccionado = medios.find((m) => m.id == paymentMedioId);
+  const requiereComprobante = payOnline && medioSeleccionado?.es_virtual;
 
-  const finalizeOrder = () => {
-    if (paymentMethod === 'transfer' && !proofImageBase64) {
-      alert('Sube el comprobante.');
-      return;
+  const finalizeOrder = async () => {
+    if (requiereComprobante && !comprobanteUrl.trim()) return alert('Sube el comprobante (URL) para pagos virtuales.');
+
+    const detalles = cart.map((i) => ({
+      producto_id: i.id,
+      cantidad: i.qty,
+      precio_unitario: Number(i.precio_venta) || 0,
+      subtotal: (Number(i.precio_venta) || 0) * i.qty,
+    }));
+    const total = cart.reduce((s, i) => s + (Number(i.precio_venta) || 0) * i.qty, 0);
+
+    const body = { estado: 'pendiente', total, detalles, pagos: [] };
+    if (payOnline && paymentMedioId) {
+      const pago = { medio_pago_id: Number(paymentMedioId), monto: total };
+      if (comprobanteUrl.trim()) pago.comprobante_url = comprobanteUrl.trim();
+      body.pagos = [pago];
     }
-    const total = cart.reduce((s, i) => s + i.total, 0);
-    const order = {
-      id: 'ORD-' + Date.now().toString().slice(-4),
-      cliente: user.nombre,
-      items: cart.map((i) => `${i.qty}x ${i.name}${i.note ? ' (' + i.note + ')' : ''}`),
-      total,
-      status: 'pending',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      timestamp: Date.now(),
-      metodoPago: paymentMethod === 'cash' ? 'Efectivo' : 'Transferencia',
-      comprobante: proofImageBase64,
-    };
 
-    const ordersList = Storage.getOrders();
-    ordersList.push(order);
-    Storage.setOrders(ordersList);
-
-    setCart([]);
-    setShowPaymentModal(false);
-    alert('✅ Pedido Enviado!');
-    setSection('pedidos');
-  };
-
-  const cancelarMiPedido = (id) => {
-    if (!window.confirm('¿Seguro que deseas cancelar este pedido?')) return;
-    const all = Storage.getOrders();
-    const pedido = all.find((o) => o.id === id);
-    if (!pedido || pedido.status !== 'pending') {
-      alert('❌ Este pedido ya no puede ser cancelado porque está en preparación.');
-      return;
+    setEnviando(true);
+    try {
+      await Api.post('/pedidos', body);
+      setCart([]);
+      setShowPaymentModal(false);
+      alert('✅ Pedido enviado al barista. Pasa a pagar/recoger en mostrador. ☕');
+      setSection('pedidos');
+    } catch (err) {
+      alert('❌ ' + Api.firstError(err));
+    } finally {
+      setEnviando(false);
     }
-    Storage.setOrders(all.filter((o) => o.id !== id));
-    alert('✅ Pedido cancelado correctamente.');
-    setOrders(Storage.getOrders().filter((o) => o.cliente === user.nombre).reverse());
   };
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!chatInput.trim()) return;
-    Storage.sendMessage(obtenerMiUsername(user), 'cliente', chatInput.trim());
-    setChatInput('');
-    const conv = Storage.getChat(obtenerMiUsername(user));
-    setMessages((conv && conv.messages) || []);
+    if (!chatContacto) return alert('No hay personal disponible en este momento.');
+    try {
+      await Api.post('/mensajes', { destinatario_id: chatContacto.id, mensaje: chatInput.trim() });
+      setChatInput('');
+      const resp = await Api.get('/mensajes', { con: chatContacto.id });
+      setMessages(Api.unwrapList(resp.mensajes).items.slice().reverse());
+    } catch (err) {
+      alert('❌ ' + Api.firstError(err));
+    }
   };
 
-  const saveProfile = () => {
+  // ── Perfil ──
+  const openProfile = () => {
     const u = Auth.getCurrentUser() || {};
-    u.nombre = profile.name;
-    u.email = profile.email;
-    Storage.setCurrentUser(u);
-    setUser(u);
-    setProfileOpen(false);
+    setProfile({ name: u.nombre || '', email: u.correo || '', password: '', avatar: u.avatar || null });
+    setProfileOpen(true);
   };
 
-  const logout = () => {
+  const saveProfile = async () => {
+    const u = Auth.getCurrentUser() || {};
+    const body = { nombre: profile.name.trim(), correo: profile.email.trim() };
+    if (profile.password) body.password = profile.password;
+    if (!body.nombre || !body.correo) return alert('Nombre y correo requeridos');
+
+    setSavingProfile(true);
+    try {
+      const actualizado = await Api.put('/perfil', body);
+      const next = { ...u, ...actualizado, avatar: profile.avatar || u.avatar };
+      Api.setUser(next);
+      setUser(next);
+      setProfileOpen(false);
+    } catch (err) {
+      alert('❌ ' + Api.firstError(err));
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const logout = async () => {
     if (window.confirm('¿Salir?')) {
-      Auth.logout();
-      navigate('/');
+      await Auth.logout();
+      navigate('/login');
     }
   };
 
-  // ── Render de pedidos ──
-  const renderOrderStatus = (o) => {
-    if (o.status === 'pending') {
-      const expiresAt = (o.timestamp || Date.now()) + 3 * 60 * 1000;
-      const active = now < expiresAt;
-      return {
-        icon: <i className="fa-solid fa-hourglass-half"></i>,
-        texto: active ? 'En Solicitud' : 'Esperando Barista',
-        color: '#f39c12',
-        cancelable: active,
-        countdown: active ? (
-          <div className="client-countdown" style={{ color: 'var(--danger)', fontSize: '12px', fontWeight: 'bold', marginTop: '5px', textAlign: 'center' }}>
-            <i className="fa-solid fa-stopwatch"></i>{' '}
-            Tienes {Math.floor((expiresAt - now) / 60000).toString().padStart(2, '0')}:
-            {Math.floor(((expiresAt - now) % 60000) / 1000).toString().padStart(2, '0')} para cancelar
-          </div>
-        ) : (
-          <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '5px', textAlign: 'center' }}>
-            Tiempo de cancelación agotado
-          </div>
-        ),
-      };
-    }
-    if (o.status === 'prep') {
-      return { icon: <i className="fa-solid fa-rotate"></i>, texto: 'En Preparación', color: '#3498db', cancelable: false, countdown: null };
-    }
-    if (o.status === 'entregado' || o.status === 'ready') {
-      return { icon: <i className="fa-solid fa-circle-check"></i>, texto: 'Entregado', color: '#27ae60', cancelable: false, countdown: null };
-    }
-    return { icon: null, texto: o.status, color: '#f39c12', cancelable: false, countdown: null };
-  };
-
-  const cartTotal = cart.reduce((s, i) => s + i.total, 0);
+  const cartTotal = cart.reduce((s, i) => s + (Number(i.precio_venta) || 0) * i.qty, 0);
 
   const profileAvatar =
+    profile.avatar ||
     user?.avatar ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nombre || 'C')}&background=293f2c&color=fff`;
 
   return (
     <div className="cliente-container">
-      <div className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`} id="sidebarOverlay" onClick={() => setSidebarOpen(false)}></div>
+      <div className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)}></div>
 
       {/* SIDEBAR */}
-      <aside className={`sidebar${sidebarOpen ? ' open' : ''}`} id="sidebar">
+      <aside className={`sidebar${sidebarOpen ? ' open' : ''}`}>
         <div className="sidebar-header">
           <img src="/imagenes/logo_kaffa.jpg" alt="KAFFA" className="sidebar-logo" />
           <div className="sidebar-header-text">
@@ -337,22 +265,20 @@ function DashboardCliente() {
         </div>
         <div className="sidebar-body">
           <nav className="sidebar-links">
-            <a className={`sidebar-link${section === 'menu' ? ' active' : ''}`} onClick={() => setSection('menu')} id="link-menu">
+            <a className={`sidebar-link${section === 'menu' ? ' active' : ''}`} onClick={() => setSection('menu')}>
               <i className="fa-solid fa-mug-hot"></i> Menú
             </a>
-            <a className={`sidebar-link${section === 'pedidos' ? ' active' : ''}`} onClick={() => setSection('pedidos')} id="link-pedidos">
+            <a className={`sidebar-link${section === 'pedidos' ? ' active' : ''}`} onClick={() => setSection('pedidos')}>
               <i className="fa-solid fa-list"></i> Mis Pedidos
             </a>
-            <a className={`sidebar-link${section === 'chat' ? ' active' : ''}`} onClick={() => setSection('chat')} id="link-chat">
+            <a className={`sidebar-link${section === 'chat' ? ' active' : ''}`} onClick={() => setSection('chat')}>
               <i className="fa-solid fa-comments"></i> Chat Barista{' '}
-              {unreadChat > 0 && <span className="chat-unread-badge" id="chatUnread">{unreadChat}</span>}
+              {unreadChat > 0 && <span className="chat-unread-badge">{unreadChat}</span>}
             </a>
           </nav>
           <div className="sidebar-divider"></div>
           <nav className="sidebar-auth">
-            <a className="sidebar-link" onClick={logout}>
-              <i className="fa-solid fa-right-from-bracket"></i> Salir
-            </a>
+            <a className="sidebar-link" onClick={logout}><i className="fa-solid fa-right-from-bracket"></i> Salir</a>
           </nav>
         </div>
       </aside>
@@ -363,7 +289,7 @@ function DashboardCliente() {
           <div className="menu-toggle" onClick={() => setSidebarOpen((v) => !v)}>
             <i className="fa-solid fa-bars"></i>
           </div>
-          <h2 className="page-title" id="pageTitle" style={{ fontSize: '18px' }}>
+          <h2 className="page-title" style={{ fontSize: '18px' }}>
             {section === 'menu' ? 'Menú' : section === 'pedidos' ? 'Mis Pedidos' : 'Chat'}
           </h2>
 
@@ -373,21 +299,14 @@ function DashboardCliente() {
             </button>
             <div className="cart-btn" onClick={() => setShowCartModal(true)}>
               <i className="fa-solid fa-cart-shopping"></i>
-              <span className="cart-badge" id="cartBadge">{cart.length}</span>
+              <span className="cart-badge">{cart.length}</span>
             </div>
             <div className="profile-trigger" onClick={(e) => { e.stopPropagation(); setDropdownOpen((v) => !v); }}>
-              <img src={profileAvatar} id="profileAvatar" className="profile-avatar" alt="Perfil" />
-              <div className="profile-info" style={{ display: 'none' }}>
-                <div className="profile-name" id="profileName">{user?.nombre || 'Cliente'}</div>
-              </div>
+              <img src={profileAvatar} className="profile-avatar" alt="Perfil" />
               <i className="fa-solid fa-caret-down" style={{ fontSize: '11px', color: 'var(--text-muted)' }}></i>
-              <div className={`profile-dropdown${dropdownOpen ? ' show' : ''}`} id="profileDropdown">
-                <div className="dropdown-item" onClick={() => setProfileOpen(true)}>
-                  <i className="fa-solid fa-user-pen"></i> Editar Perfil
-                </div>
-                <div className="dropdown-item logout" onClick={logout}>
-                  <i className="fa-solid fa-right-from-bracket"></i> Salir
-                </div>
+              <div className={`profile-dropdown${dropdownOpen ? ' show' : ''}`}>
+                <div className="dropdown-item" onClick={openProfile}><i className="fa-solid fa-user-pen"></i> Editar Perfil</div>
+                <div className="dropdown-item logout" onClick={logout}><i className="fa-solid fa-right-from-bracket"></i> Salir</div>
               </div>
             </div>
           </div>
@@ -395,119 +314,108 @@ function DashboardCliente() {
 
         <div className="content-area">
           {/* MENÚ */}
-          <div id="menu" className={`section${section === 'menu' ? ' active' : ''}`}>
-            <div className="grid-products" id="productContainer">
-              {obtenerProductosCliente().map((p) => (
-                <div className="product-card" key={p.id} onClick={() => openProductModal(p.id)}>
-                  <img src={p.img} alt={p.name} />
-                  <h3>{p.name}</h3>
-                  <p className="product-price">{formatearPrecio(p.price)}</p>
-                  <button className="btn" style={{ marginTop: '5px' }}>
-                    Ver
-                  </button>
+          <div className={`section${section === 'menu' ? ' active' : ''}`}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
+              <button className={`btn ${categoriaActiva === null ? 'btn-primary' : 'btn-secondary'}`} onClick={() => filtrarCategoria(null)} style={{ padding: '6px 14px', fontSize: '13px' }}>
+                Todos
+              </button>
+              {categorias.map((c) => (
+                <button key={c.id} className={`btn ${categoriaActiva == c.id ? 'btn-primary' : 'btn-secondary'}`} onClick={() => filtrarCategoria(c.id)} style={{ padding: '6px 14px', fontSize: '13px' }}>
+                  {c.nombre}
+                </button>
+              ))}
+            </div>
+            <div className="grid-products">
+              {listaProductos.map((p) => (
+                <div className="product-card" key={p.id} onClick={() => setCurrentProduct(p)}>
+                  <img
+                    src={p.imagen || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400'}
+                    alt={p.nombre}
+                    onError={(e) => (e.target.src = 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400')}
+                  />
+                  <h3>{p.nombre}</h3>
+                  <p className="product-price">{money(p.precio_venta)}</p>
+                  <button className="btn" style={{ marginTop: '5px' }}>Agregar</button>
                 </div>
               ))}
+              {listaProductos.length === 0 && <p className="text-muted" style={{ textAlign: 'center', width: '100%', padding: '20px' }}>Sin productos en esta categoría.</p>}
             </div>
           </div>
 
           {/* PEDIDOS */}
-          <div id="pedidos" className={`section${section === 'pedidos' ? ' active' : ''}`}>
+          <div className={`section${section === 'pedidos' ? ' active' : ''}`}>
             <h3 className="section-title">Tus Pedidos</h3>
-            <div id="historyContainer">
-              {orders.length === 0 ? (
-                <p style={{ textAlign: 'center', padding: '20px' }}>Sin pedidos. ¡Haz tu primer pedido!</p>
-              ) : (
-                orders.map((o) => {
-                  const st = renderOrderStatus(o);
-                  return (
-                    <div
-                      key={o.id}
-                      style={{
-                        background: 'var(--bg-card)',
-                        padding: '15px',
-                        borderRadius: '10px',
-                        marginBottom: '10px',
-                        borderLeft: `4px solid ${st.color}`,
-                        boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <b>{o.id}</b>
-                        <span style={{ background: st.color, color: 'white', padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
-                          {st.icon} {st.texto}
-                        </span>
-                      </div>
-                      <p style={{ fontSize: '13px', margin: '10px 0', color: 'var(--text-light)' }}>
-                        {(o.items || []).join(', ')}
-                      </p>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                        <span style={{ color: 'var(--text-light)' }}>{o.metodoPago}</span>
-                        <b style={{ color: 'var(--primary)' }}>{formatearPrecio(o.total)}</b>
-                      </div>
-                      {st.cancelable && (
-                        <button
-                          onClick={() => cancelarMiPedido(o.id)}
-                          style={{
-                            background: 'var(--danger)',
-                            color: 'white',
-                            border: 'none',
-                            padding: '8px 15px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            marginTop: '10px',
-                            width: '100%',
-                            fontWeight: '600',
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          <i className="fa-solid fa-ban"></i> Cancelar Pedido
-                        </button>
-                      )}
-                      {st.countdown}
+            {orders.length === 0 ? (
+              <p style={{ textAlign: 'center', padding: '20px' }}>Sin pedidos todavía. ¡Arma tu carrito y ordena! ☕</p>
+            ) : (
+              orders.map((o) => {
+                const st = ESTADOS_CLIENTE[o.estado] || ESTADOS_CLIENTE.pendiente;
+                const items = (o.detalles || []).map((d) => (Number(d.cantidad) || 1) + 'x ' + (d.producto?.nombre || '—')).join(', ');
+                const pagos = (o.pagos || []).map((pg) => pg.medio_pago?.nombre || 'Pago').join(', ');
+                return (
+                  <div
+                    key={o.id}
+                    style={{
+                      background: 'var(--bg-card)',
+                      padding: '15px',
+                      borderRadius: '10px',
+                      marginBottom: '10px',
+                      borderLeft: `4px solid ${st.color}`,
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <b>#{o.id}</b>
+                      <span style={{ background: st.color, color: 'white', padding: '3px 10px', borderRadius: '12px', fontSize: '12px' }}>
+                        {st.icon} {st.label}
+                      </span>
                     </div>
-                  );
-                })
-              )}
-            </div>
+                    <p style={{ fontSize: '13px', margin: '10px 0', color: 'var(--text-light)' }}>{items || '—'}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: 'var(--text-light)' }}>{pagos || 'Pago en mostrador'}</span>
+                      <b style={{ color: 'var(--primary)' }}>{money(o.total)}</b>
+                    </div>
+                    {o.factura_venta && (
+                      <p style={{ fontSize: '12px', margin: '6px 0 0', color: 'var(--text-light)' }}>
+                        <i className="fa-solid fa-file-invoice"></i> {o.factura_venta.numero_factura}
+                      </p>
+                    )}
+                  </div>
+                );
+              })
+            )}
           </div>
 
           {/* CHAT */}
-          <div id="chat" className={`section${section === 'chat' ? ' active' : ''}`}>
+          <div className={`section${section === 'chat' ? ' active' : ''}`}>
             <div className="chat-layout">
               <div className="chat-header">
                 <img src="https://ui-avatars.com/api/?name=Barista&background=293f2c&color=fff" alt="Soporte" />
                 <div>
-                  <div style={{ fontWeight: '600' }}>Soporte Kaffa</div>
+                  <div style={{ fontWeight: '600' }}>{chatContacto?.nombre || 'Soporte Kaffa'}</div>
                   <small style={{ opacity: 0.8 }}>En línea</small>
                 </div>
               </div>
-              <div className="chat-messages" id="chatMessages" ref={chatMessagesRef}>
+              <div className="chat-messages" ref={chatMessagesRef}>
                 {messages.length === 0 && (
-                  <div className="msg msg-barista">
-                    <i className="fa-solid fa-hand-wave"></i> ¡Hola! ¿En qué te puedo ayudar hoy?
-                  </div>
+                  <div className="msg msg-barista"><i className="fa-solid fa-hand-wave"></i> ¡Hola! ¿En qué te puedo ayudar hoy?</div>
                 )}
-                {messages.map((m, i) => (
-                  <div className={`msg ${m.from === 'cliente' ? 'msg-user' : 'msg-barista'}`} key={i}>
-                    {m.text}
-                    <div className="meta">
-                      {new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
+                {messages.map((m) => (
+                  <div className={`msg ${m.remitente_id == user?.id ? 'msg-user' : 'msg-barista'}`} key={m.id}>
+                    {m.mensaje}
+                    <div className="meta">{new Date(m.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
                 ))}
               </div>
               <div className="chat-input">
                 <input
                   type="text"
-                  id="chatInput"
                   placeholder="Escribe..."
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                  onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                 />
-                <button className="chat-send-btn" onClick={sendMessage}>
-                  <i className="fa-solid fa-paper-plane"></i>
-                </button>
+                <button className="chat-send-btn" onClick={sendMessage}><i className="fa-solid fa-paper-plane"></i></button>
               </div>
             </div>
           </div>
@@ -515,32 +423,18 @@ function DashboardCliente() {
       </main>
 
       {/* MODAL DETALLE PRODUCTO */}
-      {showProductModal && currentProduct && (
-        <div className="modal-overlay" style={{ display: 'flex' }} id="modalProduct">
+      {currentProduct && (
+        <div className="modal-overlay" style={{ display: 'flex' }}>
           <div className="modal-content">
-            <button className="modal-close" onClick={() => setShowProductModal(false)}>&times;</button>
-            <img src={currentProduct.img} alt={currentProduct.name} style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }} />
-            <h2>{currentProduct.name}</h2>
-            <p id="detailPrice" style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '1.2rem' }}>
-              {formatearPrecio(currentProduct.price)}
-            </p>
-            <div style={{ display: 'flex', gap: '10px', margin: '15px 0', alignItems: 'center', justifyContent: 'center' }}>
-              <button className="btn-icon" onClick={() => changeQty(-1)} style={{ fontSize: '1.2rem', padding: '4px 12px' }}>
-                <i className="fa-solid fa-minus"></i>
-              </button>
-              <span id="detailQty" style={{ fontWeight: '700', fontSize: '1.2rem' }}>{currentQty}</span>
-              <button className="btn-icon" onClick={() => changeQty(1)} style={{ fontSize: '1.2rem', padding: '4px 12px' }}>
-                <i className="fa-solid fa-plus"></i>
-              </button>
-            </div>
-            <textarea
-              id="detailNotes"
-              className="form-group"
-              style={{ width: '100%', padding: '10px', border: '1px solid var(--border)', borderRadius: '8px', fontFamily: 'inherit' }}
-              placeholder="Notas (ej. sin azúcar)"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            ></textarea>
+            <button className="modal-close" onClick={() => setCurrentProduct(null)}>&times;</button>
+            <img
+              src={currentProduct.imagen || 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400'}
+              style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }}
+              alt={currentProduct.nombre}
+            />
+            <h2>{currentProduct.nombre}</h2>
+            <p style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '1.2rem' }}>{money(currentProduct.precio_venta)}</p>
+            <p className="text-muted" style={{ fontSize: '0.85rem' }}>{currentProduct.descripcion || ''}</p>
             <button className="btn-primary" onClick={addToCart} style={{ marginTop: '15px', width: '100%', justifyContent: 'center' }}>
               <i className="fa-solid fa-cart-plus"></i> Agregar al Carrito
             </button>
@@ -550,25 +444,21 @@ function DashboardCliente() {
 
       {/* MODAL CARRITO */}
       {showCartModal && (
-        <div className="modal-overlay" style={{ display: 'flex' }} id="modalCart">
+        <div className="modal-overlay" style={{ display: 'flex' }}>
           <div className="modal-content">
             <button className="modal-close" onClick={() => setShowCartModal(false)}>&times;</button>
-            <h2>
-              <i className="fa-solid fa-cart-shopping"></i> Tu Carrito
-            </h2>
-            <div id="cartItemsContainer" style={{ maxHeight: '250px', overflowY: 'auto', marginBottom: '15px' }}>
+            <h2><i className="fa-solid fa-cart-shopping"></i> Tu Carrito</h2>
+            <div style={{ maxHeight: '250px', overflowY: 'auto', marginBottom: '15px' }}>
               {cart.length === 0 ? (
                 <p style={{ textAlign: 'center' }}>Vacío</p>
               ) : (
                 cart.map((i, x) => (
                   <div className="cart-item" key={x}>
                     <div>
-                      <b>{i.name}</b> x{i.qty}
-                      <br />
-                      <small>{i.note}</small>
+                      <b>{i.nombre}</b> x{i.qty}
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      {formatearPrecio(i.total)}{' '}
+                      {money((Number(i.precio_venta) || 0) * i.qty)}{' '}
                       <i className="fa-solid fa-trash" style={{ color: 'red', cursor: 'pointer' }} onClick={() => remCart(x)}></i>
                     </div>
                   </div>
@@ -576,10 +466,10 @@ function DashboardCliente() {
               )}
             </div>
             <h3 style={{ textAlign: 'right' }}>
-              Total: <span id="cartTotalAmount" style={{ color: 'var(--primary)' }}>{formatearPrecio(cartTotal)}</span>
+              Total: <span style={{ color: 'var(--primary)' }}>{money(cartTotal)}</span>
             </h3>
             <button className="btn-primary" onClick={openPaymentModal} style={{ marginTop: '15px', width: '100%', justifyContent: 'center', background: 'var(--success, #27ae60)' }}>
-              <i className="fa-solid fa-check"></i> Confirmar Compra
+              <i className="fa-solid fa-check"></i> Confirmar Pedido
             </button>
           </div>
         </div>
@@ -587,46 +477,43 @@ function DashboardCliente() {
 
       {/* MODAL PAGO */}
       {showPaymentModal && (
-        <div className="modal-overlay" style={{ display: 'flex' }} id="modalPayment">
+        <div className="modal-overlay" style={{ display: 'flex' }}>
           <div className="modal-content">
             <button className="modal-close" onClick={() => setShowPaymentModal(false)}>&times;</button>
-            <h2>
-              <i className="fa-solid fa-credit-card"></i> Método de Pago
-            </h2>
+            <h2><i className="fa-solid fa-credit-card"></i> Método de Pago</h2>
 
-            <div className="payment-options">
-              <div
-                className={`payment-opt${paymentMethod === 'cash' ? ' selected' : ''}`}
-                id="payCash"
-                onClick={() => setPaymentMethod('cash')}
-              >
-                <i className="fa-solid fa-money-bill"></i> Efectivo
-              </div>
-              <div
-                className={`payment-opt${paymentMethod === 'transfer' ? ' selected' : ''}`}
-                id="payTransfer"
-                onClick={() => setPaymentMethod('transfer')}
-              >
-                <i className="fa-solid fa-mobile-screen"></i> Transferencia
+            <div className="form-group">
+              <label>¿Cómo pagas?</label>
+              <div className="payment-options">
+                <div className={`payment-opt${!payOnline ? ' selected' : ''}`} onClick={() => setPayOnline(false)}>
+                  <i className="fa-solid fa-money-bill"></i> Efectivo en mostrador
+                </div>
+                <div className={`payment-opt${payOnline ? ' selected' : ''}`} onClick={() => setPayOnline(true)}>
+                  <i className="fa-solid fa-mobile-screen"></i> Pagar ya (transferencia)
+                </div>
               </div>
             </div>
 
-            {paymentMethod === 'transfer' && (
-              <div id="transferArea" style={{ display: 'block', marginTop: '10px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  <b>Nequi/Daviplata:</b> 300 123 4567
-                </p>
-                <div className="upload-box" onClick={() => fileInputRef.current?.click()}>
-                  <i className="fa-solid fa-cloud-arrow-up" style={{ fontSize: '24px', color: 'var(--text-muted)' }}></i>
-                  <p style={{ fontSize: '12px', margin: '5px 0 0', color: 'var(--text-muted)' }}>Subir Comprobante</p>
-                  <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleProof} />
+            {payOnline && (
+              <>
+                <div className="form-group">
+                  <label>Medio de Pago</label>
+                  <select value={paymentMedioId} onChange={(e) => setPaymentMedioId(e.target.value)}>
+                    {medios.filter((m) => m.es_virtual).map((m) => (
+                      <option key={m.id} value={m.id}>{m.nombre}</option>
+                    ))}
+                  </select>
                 </div>
-                {proofImageBase64 && <img src={proofImageBase64} id="proofPreview" className="preview-img" alt="Comprobante" />}
-              </div>
+                <div className="form-group">
+                  <label>URL del Comprobante (obligatorio para medios virtuales)</label>
+                  <input type="text" placeholder="https://... (link de la captura)" value={comprobanteUrl} onChange={(e) => setComprobanteUrl(e.target.value)} />
+                  <small className="text-muted">Ej: enlace público de la captura del pago. El barista la verificará.</small>
+                </div>
+              </>
             )}
 
-            <button className="btn-primary" onClick={finalizeOrder} style={{ marginTop: '20px', width: '100%', justifyContent: 'center' }}>
-              <i className="fa-solid fa-check"></i> Finalizar Pedido
+            <button className="btn-primary" onClick={finalizeOrder} disabled={enviando} style={{ marginTop: '20px', width: '100%', justifyContent: 'center' }}>
+              <i className="fa-solid fa-check"></i> {enviando ? 'Enviando…' : 'Finalizar Pedido'}
             </button>
           </div>
         </div>
@@ -634,20 +521,14 @@ function DashboardCliente() {
 
       {/* MODAL PERFIL */}
       {profileOpen && (
-        <div className="modal-overlay" style={{ display: 'flex' }} id="modalProfile">
+        <div className="modal-overlay" style={{ display: 'flex' }}>
           <div className="modal-content">
             <button className="modal-close" onClick={() => setProfileOpen(false)}>&times;</button>
-            <h2>
-              <i className="fa-solid fa-user-gear"></i> Mi Perfil
-            </h2>
+            <h2><i className="fa-solid fa-user-gear"></i> Mi Perfil</h2>
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <img src={profileAvatar} className="profile-modal-avatar" alt="Perfil" />
+              <img src={profile.avatar || profileAvatar} className="profile-modal-avatar" alt="Perfil" />
               <br />
-              <button
-                className="btn-icon"
-                onClick={() => profileFileInputRef.current?.click()}
-                style={{ marginTop: '6px' }}
-              >
+              <button className="btn-icon" onClick={() => profileFileInputRef.current?.click()} style={{ marginTop: '6px' }}>
                 <i className="fa-solid fa-camera"></i> Cambiar Foto
               </button>
               <input
@@ -658,9 +539,7 @@ function DashboardCliente() {
                 onChange={(e) => {
                   if (e.target.files[0]) {
                     const r = new FileReader();
-                    r.onload = (ev) => {
-                      setProfile((p) => ({ ...p, avatar: ev.target.result }));
-                    };
+                    r.onload = (ev) => setProfile((p) => ({ ...p, avatar: ev.target.result }));
                     r.readAsDataURL(e.target.files[0]);
                   }
                 }}
@@ -675,22 +554,12 @@ function DashboardCliente() {
               <input type="email" value={profile.email} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} required />
             </div>
             <div className="form-group">
-              <label>
-                <i className="fa-solid fa-palette"></i> Tema
-              </label>
-              <select value={theme} onChange={(e) => {
-                localStorage.setItem('kaffaTheme', e.target.value);
-                window.location.reload();
-              }}>
-                <option value="light">Claro</option>
-                <option value="dark">Oscuro</option>
-              </select>
+              <label>Nueva Contraseña (opcional)</label>
+              <input type="password" value={profile.password} placeholder="Mín. 8: mayúscula, minúscula, número y símbolo" onChange={(e) => setProfile((p) => ({ ...p, password: e.target.value }))} />
             </div>
             <div className="form-actions">
-              <button className="btn-secondary" onClick={() => setProfileOpen(false)}>
-                Cancelar
-              </button>
-              <button className="btn-primary" onClick={saveProfile}>
+              <button className="btn-secondary" onClick={() => setProfileOpen(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={saveProfile} disabled={savingProfile}>
                 <i className="fa-solid fa-floppy-disk"></i> Guardar
               </button>
             </div>

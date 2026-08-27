@@ -647,3 +647,47 @@ table tbody tr:hover { background: rgba(0,0,0,0.015); }
   .main { margin-left: 0 !important; }
   .content { padding: 18px 16px; }
 }
+/* ── UTILIDADES COMPARTIDAS (paneles React) ── */
+
+/* Fila dinámica para formularios con 3-4 controles en línea */
+.form-row-dynamic {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.form-row-dynamic > * {
+  min-width: 0;
+}
+
+/* Celda de acciones en tablas: sin salto de línea, alineada */
+.td-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+/* Select compacto dentro de tablas */
+.estado-select-compact {
+  padding: 5px 8px;
+  border: 1px solid var(--border, rgba(0,0,0,0.12));
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.75rem;
+  background: var(--surface, #fff);
+  color: var(--text, #1a3116);
+  max-width: 140px;
+  cursor: pointer;
+}
+
+.estado-select-compact:focus {
+  border-color: var(--primary, #39A900);
+  outline: none;
+}
+
+/* Formulario en modal: dos columnas colapsan a una en pantallas pequeñas */
+@media (max-width: 560px) {
+  .form-row { grid-template-columns: 1fr; }
+}

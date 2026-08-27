@@ -5,61 +5,24 @@ export function formatearPrecioMenu(valor) {
   return `$${(Number.isNaN(n) ? 0 : n).toLocaleString('es-CO')}`;
 }
 
-export function obtenerPedidos() {
-  return JSON.parse(localStorage.getItem('kaffaOrders')) || [];
+export function money(v) {
+  const n = Number(v) || 0;
+  return '$' + n.toLocaleString('es-CO');
 }
 
-export function guardarPedidos(pedidos) {
-  localStorage.setItem('kaffaOrders', JSON.stringify(pedidos));
+export function fechaHora(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  return Number.isNaN(d.getTime())
+    ? String(v)
+    : d.toLocaleDateString('es-CO') + ' ' + d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function leerNotificaciones() {
-  return JSON.parse(localStorage.getItem('kaffaNotificaciones')) || [];
-}
-
-export function esPersonalizado(pedido) {
-  if (pedido.items && Array.isArray(pedido.items)) {
-    return pedido.items.some((item) => {
-      if (typeof item === 'string') return item.includes('(') && item.includes(')');
-      return (
-        item.personalizacion &&
-        (item.personalizacion.extras?.length > 0 ||
-          item.personalizacion.leche ||
-          item.personalizacion.tamano)
-      );
-    });
-  }
-  return false;
-}
-
-export function obtenerPersonalizaciones(pedido) {
-  const personalizaciones = [];
-  if (pedido.items && Array.isArray(pedido.items)) {
-    pedido.items.forEach((item) => {
-      if (typeof item === 'string' && item.includes('(')) {
-        personalizaciones.push(item);
-      } else if (item.personalizacion) {
-        let desc = item.producto?.nombre || 'Producto';
-        if (item.personalizacion.tamano) desc += ` - ${item.personalizacion.tamano.nombre}`;
-        if (item.personalizacion.leche) desc += ` - ${item.personalizacion.leche}`;
-        if (item.personalizacion.extras?.length > 0) {
-          desc += ` - Extras: ${item.personalizacion.extras.map((e) => e.nombre).join(', ')}`;
-        }
-        personalizaciones.push(desc);
-      }
-    });
-  }
-  return personalizaciones;
-}
-
-export function escapeHtml(texto) {
-  const div = document.createElement('div');
-  div.textContent = texto || '';
-  return div.innerHTML;
-}
-
-export function avatarLetra(nombre) {
-  return (nombre || '?').charAt(0).toUpperCase();
+export function itemsPedido(p) {
+  return (p.detalles || []).map((d) => ({
+    nombre: d.producto?.nombre || 'Producto',
+    cant: Number(d.cantidad) || 1,
+  }));
 }
 
 export function getJsPDF() {

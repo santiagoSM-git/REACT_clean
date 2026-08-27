@@ -6,6 +6,16 @@ import { useBodyClass } from '../hooks/useBodyClass';
 import { Auth } from '../lib/auth';
 import { isValidEmail } from '../lib/utils';
 
+/** Reglas de contraseña del backend (min 8, mayúscula, minúscula, número, símbolo). */
+function validarPassword(password) {
+  if (password.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
+  if (!/[A-Z]/.test(password)) return 'La contraseña debe incluir una mayúscula.';
+  if (!/[a-z]/.test(password)) return 'La contraseña debe incluir una minúscula.';
+  if (!/[0-9]/.test(password)) return 'La contraseña debe incluir un número.';
+  if (!/[^A-Za-z0-9]/.test(password)) return 'La contraseña debe incluir un símbolo (ej. !@#$%).';
+  return null;
+}
+
 function Registro() {
   useStyles(['style.css', 'auth.css']);
   useBodyClass('login-page');
@@ -13,6 +23,7 @@ function Registro() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmar, setShowConfirmar] = useState(false);
+  const [loading, setLoading] = useState(false);
   const {
     register,
     handleSubmit,
@@ -20,35 +31,20 @@ function Registro() {
     formState: { errors },
   } = useForm({ mode: 'onBlur' });
 
-  const onSubmit = (data) => {
-    const nombre = data.nombre.trim();
-    const usuario = data.usuario.trim();
-    const email = data.email.trim();
-    const password = data.password.trim();
-    const confirmar = data.confirmar.trim();
-
-    if (!nombre || !usuario || !email || !password || !confirmar) {
-      alert('⚠️ Por favor completa todos los campos.');
-      return;
-    }
-    if (password !== confirmar) {
-      alert('❌ Las contraseñas no coinciden. Por favor verifica.');
-      return;
-    }
-    if (password.length < 6) {
-      alert('❌ La contraseña debe tener al menos 6 caracteres.');
-      return;
-    }
-    if (!isValidEmail(email)) {
-      alert('❌ Por favor ingresa un correo electrónico válido.');
-      return;
-    }
-
-    const result = Auth.register({ nombre, username: usuario, email, password });
-    alert(result.message);
+  const onSubmit = async (data) => {
+    setLoading(true);
+    const result = await Auth.register({
+      nombre: data.nombre.trim(),
+      correo: data.email.trim(),
+      password: data.password,
+    });
+    setLoading(false);
 
     if (result.success) {
-      navigate('/login');
+      alert(result.message);
+      navigate(result.redirect);
+    } else {
+      alert(result.message);
     }
   };
 
@@ -68,17 +64,6 @@ function Registro() {
               {...register('nombre', { required: 'El nombre es obligatorio' })}
             />
             {errors.nombre && <span className="auth-error">{errors.nombre.message}</span>}
-          </div>
-
-          <div className="input-group">
-            <label htmlFor="usuario">Nombre de Usuario</label>
-            <input
-              type="text"
-              id="usuario"
-              placeholder="Elige un nombre de usuario"
-              {...register('usuario', { required: 'El usuario es obligatorio' })}
-            />
-            {errors.usuario && <span className="auth-error">{errors.usuario.message}</span>}
           </div>
 
           <div className="input-group">
@@ -104,7 +89,7 @@ function Registro() {
                 placeholder="Crea una contraseña"
                 {...register('password', {
                   required: 'La contraseña es obligatoria',
-                  minLength: { value: 6, message: 'Mínimo 6 caracteres' },
+                  validate: (v) => validarPassword(v) || true,
                 })}
               />
               <i
@@ -114,6 +99,7 @@ function Registro() {
               ></i>
             </div>
             {errors.password && <span className="auth-error">{errors.password.message}</span>}
+            <small className="text-muted">Mín. 8 caracteres: mayúscula, minúscula, número y símbolo.</small>
           </div>
 
           <div className="input-group">
@@ -137,8 +123,8 @@ function Registro() {
             {errors.confirmar && <span className="auth-error">{errors.confirmar.message}</span>}
           </div>
 
-          <button type="submit" className="btn">
-            Registrarme
+          <button type="submit" className="btn" disabled={loading}>
+            {loading ? 'Registrando…' : 'Registrarme'}
           </button>
         </form>
         <p className="registro">

@@ -1,29 +1,38 @@
 import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Storage } from '../../lib/storage';
+import { Auth } from '../../lib/auth';
+import { Api } from '../../lib/api';
 
 const LINKS = [
   { to: '/barista-dashboard/pedidos', icon: 'fa-columns', label: 'Tablero Pedidos' },
   { to: '/barista-dashboard/inventario', icon: 'fa-boxes-stacked', label: 'Inventario' },
   { to: '/barista-dashboard/chat', icon: 'fa-comments', label: 'Chat Cliente' },
-  { to: '/barista-dashboard/caja', icon: 'fa-cash-register', label: 'Cierre de Caja' },
+  { to: '/barista-dashboard/caja', icon: 'fa-cash-register', label: 'Caja' },
 ];
 
 export default function SidebarBarista({ open = false, onClose }) {
   const navigate = useNavigate();
-  const [unread, setUnread] = useState(() => Storage.totalChatsNoLeidos('barista'));
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setUnread(Storage.totalChatsNoLeidos('barista'));
-    }, 3000);
+    const cargar = async () => {
+      try {
+        const resp = await Api.get('/mensajes');
+        const n = (resp.contactos || []).reduce((s, c) => s + (c.no_leidos || 0), 0);
+        setUnread(n);
+      } catch {
+        /* noop */
+      }
+    };
+    cargar();
+    const interval = setInterval(cargar, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  const logout = () => {
+  const logout = async () => {
     if (window.confirm('¿Cerrar sesión?')) {
-      Storage.remove(Storage.KEYS.USER);
-      navigate('/');
+      await Auth.logout();
+      navigate('/login');
     }
   };
 

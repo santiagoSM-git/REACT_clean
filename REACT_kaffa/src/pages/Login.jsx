@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useStyles } from '../hooks/useStyles';
 import { useBodyClass } from '../hooks/useBodyClass';
 import { Auth } from '../lib/auth';
-import { isNotEmpty } from '../lib/utils';
+import { isValidEmail } from '../lib/utils';
 
 function Login() {
   useStyles(['style.css', 'auth.css']);
@@ -12,26 +12,32 @@ function Login() {
 
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [loading, setLoading] = useState(false);
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm({ mode: 'onBlur' });
 
-  const onSubmit = (data) => {
-    const user = data.user.trim();
+  const onSubmit = async (data) => {
+    const correo = data.correo.trim();
     const password = data.password.trim();
 
-    if (!isNotEmpty(user) || !isNotEmpty(password)) {
-      alert('⚠️ Por favor completa todos los campos.');
+    if (!correo || !password) {
+      setFeedback('⚠️ Por favor completa todos los campos.');
       return;
     }
 
-    const result = Auth.login(user, password);
-    alert(result.message);
+    setFeedback('');
+    setLoading(true);
+    const result = await Auth.login(correo, password);
+    setLoading(false);
 
-    if (result.success && result.redirect) {
+    if (result.success) {
       navigate(result.redirect);
+    } else {
+      setFeedback(result.message);
     }
   };
 
@@ -43,14 +49,17 @@ function Login() {
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="input-group">
-            <label htmlFor="user">Usuario</label>
+            <label htmlFor="correo">Correo Electrónico</label>
             <input
               type="text"
-              id="user"
-              placeholder="Tu nombre de usuario"
-              {...register('user', { required: 'El usuario es obligatorio' })}
+              id="correo"
+              placeholder="ejemplo@correo.com"
+              {...register('correo', {
+                required: 'El correo es obligatorio',
+                validate: (v) => isValidEmail(v) || 'Ingresa un correo válido',
+              })}
             />
-            {errors.user && <span className="auth-error">{errors.user.message}</span>}
+            {errors.correo && <span className="auth-error">{errors.correo.message}</span>}
           </div>
 
           <div className="input-group">
@@ -71,8 +80,10 @@ function Login() {
             {errors.password && <span className="auth-error">{errors.password.message}</span>}
           </div>
 
-          <button type="submit" className="btn">
-            Ingresar
+          {feedback && <p className="login-feedback">{feedback}</p>}
+
+          <button type="submit" className="btn" disabled={loading}>
+            {loading ? 'Ingresando…' : 'Ingresar'}
           </button>
         </form>
 

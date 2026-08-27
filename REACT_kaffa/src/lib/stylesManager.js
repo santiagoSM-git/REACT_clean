@@ -33,13 +33,13 @@ function createLink(href) {
   return { link, promise };
 }
 
-/** Inyecta una hoja de estilo y devuelve el elemento <link> cargado */
+/** Inyecta una hoja de estilo y devuelve la promesa de carga */
 export function loadStylesheet(href) {
   refCount.set(href, (refCount.get(href) || 0) + 1);
 
   if (loading.has(href)) return loading.get(href);
 
-  const { link, promise } = createLink(href);
+  const { promise } = createLink(href);
   loading.set(href, promise);
 
   promise.finally(() => {

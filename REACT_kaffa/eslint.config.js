@@ -17,5 +17,10 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // Regla experimental de react-hooks v7 demasiado estricta para el
+      // patrón estándar de fetch-on-mount (el setState ocurre tras un await).
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])

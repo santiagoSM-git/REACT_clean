@@ -1,33 +1,45 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Auth } from '../../lib/auth';
-import { Storage } from '../../lib/storage';
+import { Api } from '../../lib/api';
 
 export default function InventarioView() {
-  const user = Auth.getCurrentUser();
-  const [inventario, setInventario] = useState(() =>
-    JSON.parse(localStorage.getItem('inventarioProductos')) || [
-      { nombre: 'Café Molido', cat: 'Insumo', cant: 10, und: 'kg' },
-      { nombre: 'Leche', cat: 'Insumo', cant: 20, und: 'lt' },
-      { nombre: 'Azúcar', cat: 'Insumo', cant: 5, und: 'kg' },
-    ],
-  );
+  const [inventario, setInventario] = useState([]);
   const [reporteModal, setReporteModal] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  const enviarReporte = () => {
+  const cargar = async () => {
+    try {
+      const resp = await Api.get('/insumos', { per_page: 100 });
+      setInventario(Api.unwrapList(resp).items);
+    } catch {
+      /* se reintenta con polling */
+    }
+  };
+
+  useEffect(() => {
+    cargar();
+    const interval = setInterval(cargar, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const enviarReporte = async () => {
     if (!reporteModal) return;
     const mensaje = reporteModal.mensaje.trim();
-    if (!mensaje) {
-      alert('⚠️ Escribe un mensaje.');
-      return;
+    if (!mensaje) return alert('⚠️ Escribe un mensaje.');
+
+    setSaving(true);
+    try {
+      await Api.post('/reportes', { mensaje, prioridad: reporteModal.prioridad });
+      setReporteModal(null);
+      alert('✅ Reporte enviado al administrador.');
+    } catch (err) {
+      alert('❌ ' + Api.firstError(err));
+    } finally {
+      setSaving(false);
     }
-    Storage.addReporte({
-      barista: user?.nombre || 'Barista',
-      mensaje,
-      prioridad: reporteModal.prioridad,
-    });
-    setReporteModal(null);
-    alert('✅ Reporte enviado al administrador.');
   };
+
+  const user = Auth.getCurrentUser();
 
   return (
     <div className="content-section active" id="inventario">
@@ -36,21 +48,24 @@ export default function InventarioView() {
         <table>
           <thead>
             <tr>
-              <th>Producto</th>
-              <th>Categoría</th>
+              <th>Insumo</th>
+              <th>Unidad</th>
               <th>Stock</th>
+              <th>Mínimo</th>
               <th>Estado</th>
               <th>Acción</th>
             </tr>
           </thead>
           <tbody>
             {inventario.map((p) => {
+              const s = Number(p.stock_actual) || 0;
+              const m = Number(p.stock_minimo) || 0;
               let icon, label, cls;
-              if (p.cant <= 0) {
+              if (s <= 0) {
                 icon = 'fa-solid fa-circle-xmark';
                 label = 'Agotado';
                 cls = 'stock-out';
-              } else if (p.cant <= 5) {
+              } else if (s <= m) {
                 icon = 'fa-solid fa-triangle-exclamation';
                 label = 'Bajo';
                 cls = 'stock-low';
@@ -60,18 +75,15 @@ export default function InventarioView() {
                 cls = 'stock-ok';
               }
               return (
-                <tr key={p.nombre}>
+                <tr key={p.id}>
                   <td>
                     <div className="prod-cell">
                       <i className="fa-solid fa-cube"></i> {p.nombre}
                     </div>
                   </td>
-                  <td>
-                    <span className="cat-tag">{p.cat}</span>
-                  </td>
-                  <td>
-                    <strong>{p.cant}</strong> {p.und}
-                  </td>
+                  <td>{p.unidad_medida || '—'}</td>
+                  <td><strong>{p.stock_actual}</strong></td>
+                  <td>{p.stock_minimo}</td>
                   <td>
                     <span className={`badge-stock ${cls}`}>
                       <i className={icon}></i> {label}
@@ -84,7 +96,7 @@ export default function InventarioView() {
                         setReporteModal({
                           producto: p.nombre,
                           mensaje: `Stock bajo: ${p.nombre}`,
-                          prioridad: 'Alta',
+                          prioridad: 'alta',
                         })
                       }
                     >
@@ -94,19 +106,22 @@ export default function InventarioView() {
                 </tr>
               );
             })}
+            {inventario.length === 0 && (
+              <tr>
+                <td colSpan="6" className="text-muted" style={{ textAlign: 'center', padding: '20px' }}>
+                  Sin insumos registrados.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
       {reporteModal && (
-        <div className="modal-overlay" style={{ display: 'flex' }} id="modalReporte">
+        <div className="modal-overlay" style={{ display: 'flex' }}>
           <div className="modal-content">
-            <button className="modal-close" onClick={() => setReporteModal(null)}>
-              &times;
-            </button>
-            <h2>
-              <i className="fa-solid fa-flag"></i> Reportar Novedad
-            </h2>
+            <button className="modal-close" onClick={() => setReporteModal(null)}>&times;</button>
+            <h2><i className="fa-solid fa-flag"></i> Reportar Novedad</h2>
             <div className="form-group">
               <label>Barista:</label>
               <input type="text" value={user?.nombre || 'Barista'} readOnly />
@@ -117,29 +132,19 @@ export default function InventarioView() {
             </div>
             <div className="form-group">
               <label>Mensaje:</label>
-              <textarea
-                rows="3"
-                placeholder="Describe la novedad..."
-                value={reporteModal.mensaje}
-                onChange={(e) => setReporteModal((m) => ({ ...m, mensaje: e.target.value }))}
-              ></textarea>
+              <textarea rows="3" placeholder="Describe la novedad..." value={reporteModal.mensaje} onChange={(e) => setReporteModal((m) => ({ ...m, mensaje: e.target.value }))}></textarea>
             </div>
             <div className="form-group">
               <label>Prioridad:</label>
-              <select
-                value={reporteModal.prioridad}
-                onChange={(e) => setReporteModal((m) => ({ ...m, prioridad: e.target.value }))}
-              >
-                <option value="Baja">Baja</option>
-                <option value="Media">Media</option>
-                <option value="Alta">Alta</option>
+              <select value={reporteModal.prioridad} onChange={(e) => setReporteModal((m) => ({ ...m, prioridad: e.target.value }))}>
+                <option value="baja">Baja</option>
+                <option value="media">Media</option>
+                <option value="alta">Alta</option>
               </select>
             </div>
             <div className="form-actions">
-              <button className="btn-secondary" onClick={() => setReporteModal(null)}>
-                Cancelar
-              </button>
-              <button className="btn-primary" onClick={enviarReporte}>
+              <button className="btn-secondary" onClick={() => setReporteModal(null)}>Cancelar</button>
+              <button className="btn-primary" onClick={enviarReporte} disabled={saving}>
                 <i className="fa-solid fa-paper-plane"></i> Enviar Reporte
               </button>
             </div>

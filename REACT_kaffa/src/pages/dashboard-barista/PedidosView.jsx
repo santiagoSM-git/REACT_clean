@@ -1,159 +1,203 @@
 import { useEffect, useState } from 'react';
+import { Api } from '../../lib/api';
 import { useBarista } from './BaristaContext.jsx';
-import {
-  esPersonalizado,
-  formatearPrecioMenu,
-  getJsPDF,
-  guardarPedidos,
-  leerNotificaciones,
-  obtenerPedidos,
-  obtenerPersonalizaciones,
-} from './helpers';
+import { fechaHora, getJsPDF, itemsPedido, money } from './helpers';
 
 export default function PedidosView() {
-  const { turno, setTurno } = useBarista();
+  const { turno } = useBarista();
   const [pedidos, setPedidos] = useState([]);
-  const [flipped, setFlipped] = useState({});
-  const [now, setNow] = useState(Date.now());
+  const [medios, setMedios] = useState([]);
+  const [productos, setProductos] = useState([]);
+  const [contactos, setContactos] = useState([]);
 
-  useEffect(() => {
-    const refresh = () => setPedidos(obtenerPedidos());
-    refresh();
-    const interval = setInterval(refresh, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  // Modales
+  const [cobrarPedido, setCobrarPedido] = useState(null); // { pedido, medio_id, monto, comprobante }
+  const [nuevoPedido, setNuevoPedido] = useState(null); // { cliente_id, estado, detalles: [], pagos: [] }
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const verificarPedido = (id) => {
-    const list = obtenerPedidos();
-    const idx = list.findIndex((p) => p.id === id);
-    if (idx !== -1) {
-      list[idx].status = 'prep';
-      list[idx].verificadoEn = new Date().toISOString();
-      guardarPedidos(list);
-      const notifs = leerNotificaciones();
-      notifs.push({
-        pedidoId: id,
-        cliente: list[idx].cliente,
-        mensaje: '¡Tu pedido está siendo preparado! ☕',
-        tipo: 'preparacion',
-        fecha: new Date().toISOString(),
-      });
-      localStorage.setItem('kaffaNotificaciones', JSON.stringify(notifs));
-      setPedidos(list);
+  const cargar = async () => {
+    try {
+      const resp = await Api.get('/pedidos', { per_page: 100 });
+      setPedidos(Api.unwrapList(resp).items);
+    } catch {
+      /* se reintenta con el polling */
     }
   };
 
-  const cancelarPedido = (id) => {
-    if (!window.confirm('¿Cancelar este pedido? Esta acción no se puede deshacer.')) return;
-    const list = obtenerPedidos();
-    const pedido = list.find((p) => p.id === id);
-    if (pedido && pedido.status !== 'pending') {
-      alert('❌ No se puede cancelar un pedido que ya está en preparación.');
+  useEffect(() => {
+    cargar();
+    const interval = setInterval(cargar, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    Api.get('/medios-pago', { per_page: 100 })
+      .then((resp) => setMedios(Api.unwrapList(resp).items))
+      .catch(() => {});
+  }, []);
+
+  const turnoActivo = turno?.turno_activo && turno?.turno_info;
+
+  // ── Pagos previos del pedido (para evitar doble cobro) ──
+  const pagadoTotal = (p) => (p.pagos || []).reduce((s, pg) => s + Number(pg.monto || 0), 0);
+
+  const abrirCobro = (p) => {
+    setCobrarPedido({ pedido: p, medio_id: medios[0]?.id || '', monto: p.total ?? '', comprobante: '' });
+  };
+
+  const confirmarCobro = async () => {
+    const { pedido, medio_id, monto, comprobante } = cobrarPedido;
+    const montoNum = Number(monto);
+    const medio = medios.find((m) => m.id == medio_id);
+
+    if (!medio_id) return alert('Selecciona un medio de pago');
+    if (!(montoNum > 0)) return alert('Monto inválido');
+    if (medio?.es_virtual && !comprobante.trim()) return alert('El medio virtual requiere la URL del comprobante.');
+
+    setSaving(true);
+    try {
+      const pagosPrevios = pagadoTotal(pedido);
+      const necesitaPago = Math.abs(pagosPrevios - Number(pedido.total || 0)) > 0.01;
+
+      if (necesitaPago) {
+        const pagoBody = { pedido_id: pedido.id, medio_pago_id: Number(medio_id), monto: montoNum };
+        if (comprobante.trim()) pagoBody.comprobante_url = comprobante.trim();
+        await Api.post('/pago-pedidos', pagoBody);
+      }
+      await Api.put('/pedidos/' + pedido.id, { estado: 'pagado' });
+      setCobrarPedido(null);
+      cargar();
+    } catch (err) {
+      alert('❌ ' + Api.turnoMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cambiarEstado = async (id, estado) => {
+    try {
+      await Api.put('/pedidos/' + id, { estado });
+      cargar();
+    } catch (err) {
+      alert('❌ ' + Api.turnoMessage(err));
+    }
+  };
+
+  const entregar = (id) => cambiarEstado(id, 'entregado');
+
+  const cancelar = (id) => {
+    if (!window.confirm(`¿Cancelar el pedido #${id}?`)) return;
+    cambiarEstado(id, 'cancelado');
+  };
+
+  // ── Nuevo pedido (mostrador) ──
+  const abrirNuevoPedido = async () => {
+    try {
+      const [pResp, cResp] = await Promise.all([
+        Api.get('/productos', { per_page: 100, activo: 1 }),
+        Api.get('/mensajes/contactos'),
+      ]);
+      setProductos(Api.unwrapList(pResp).items);
+      setContactos(cResp || []);
+    } catch (err) {
+      alert('❌ ' + Api.firstError(err));
       return;
     }
-    const nuevos = list.filter((p) => p.id !== id);
-    guardarPedidos(nuevos);
-    const notifs = leerNotificaciones();
-    notifs.push({
-      pedidoId: id,
-      cliente: pedido?.cliente,
-      mensaje: 'Tu pedido ha sido cancelado.',
-      tipo: 'cancelado',
-      fecha: new Date().toISOString(),
+    setNuevoPedido({
+      cliente_id: '',
+      estado: 'pendiente',
+      detalles: [{ producto_id: productos[0]?.id || '', cantidad: 1 }],
+      pagos: [],
     });
-    localStorage.setItem('kaffaNotificaciones', JSON.stringify(notifs));
-    setPedidos(nuevos);
   };
 
-  const entregarPedido = (id) => {
-    const list = obtenerPedidos();
-    const idx = list.findIndex((p) => p.id === id);
-    if (idx !== -1) {
-      list[idx].status = 'entregado';
-      list[idx].entregadoEn = new Date().toISOString();
-      const stored = JSON.parse(localStorage.getItem('kaffaTurno')) || null;
-      if (stored) {
-        stored.pedidosEntregados = stored.pedidosEntregados || [];
-        stored.pedidosEntregados.push(list[idx]);
-        setTurno(stored);
-      }
-      guardarPedidos(list);
-      const notifs = leerNotificaciones();
-      notifs.push({
-        pedidoId: id,
-        cliente: list[idx].cliente,
-        mensaje: '¡Tu pedido está listo! Pasa a recogerlo 🎉',
-        tipo: 'listo',
-        fecha: new Date().toISOString(),
-      });
-      localStorage.setItem('kaffaNotificaciones', JSON.stringify(notifs));
-      setPedidos(list);
+  const guardarPedido = async () => {
+    const detalles = nuevoPedido.detalles
+      .map((d) => {
+        const prod = productos.find((p) => p.id == d.producto_id);
+        const cantidad = Number(d.cantidad) || 0;
+        const precio = Number(prod?.precio_venta) || 0;
+        return { producto_id: Number(d.producto_id), cantidad, precio_unitario: precio, subtotal: precio * cantidad };
+      })
+      .filter((d) => d.producto_id && d.cantidad > 0);
+
+    if (!detalles.length) return alert('Agrega al menos un producto.');
+
+    const pagos = nuevoPedido.pagos
+      .map((p) => {
+        const pago = { medio_pago_id: Number(p.medio_pago_id), monto: Number(p.monto) };
+        if (p.comprobante.trim()) pago.comprobante_url = p.comprobante.trim();
+        return pago;
+      })
+      .filter((p) => p.medio_pago_id && p.monto > 0);
+
+    const total = detalles.reduce((s, d) => s + (d.subtotal || 0), 0);
+    const body = { estado: nuevoPedido.estado, total, detalles, pagos };
+    if (nuevoPedido.cliente_id) body.cliente_id = Number(nuevoPedido.cliente_id);
+
+    setSaving(true);
+    try {
+      await Api.post('/pedidos', body);
+      setNuevoPedido(null);
+      cargar();
+    } catch (err) {
+      alert('❌ ' + Api.turnoMessage(err));
+    } finally {
+      setSaving(false);
     }
   };
 
+  // ── Factura PDF ──
   const imprimirFactura = async (id) => {
-    const pedido = obtenerPedidos().find((p) => p.id === id);
-    if (!pedido) return;
+    const p = pedidos.find((x) => x.id === id);
+    if (!p) return;
     const jsPDF = await getJsPDF();
     if (!jsPDF) return;
+
+    const factura = p.factura_venta;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 150] });
 
     doc.setFontSize(14);
     doc.text('KAFFA CAFÉ', 40, 10, { align: 'center' });
     doc.setFontSize(8);
-    doc.text('Factura de Venta', 40, 16, { align: 'center' });
+    doc.text('Factura de Venta' + (factura ? ' ' + factura.numero_factura : ''), 40, 16, { align: 'center' });
     doc.text('─────────────────────', 40, 20, { align: 'center' });
 
     doc.setFontSize(9);
-    doc.text(`Pedido: #${pedido.id}`, 5, 28);
-    doc.text(`Cliente: ${pedido.cliente}`, 5, 34);
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-CO')}`, 5, 40);
+    doc.text('Pedido: #' + p.id, 5, 28);
+    doc.text('Cliente: ' + (p.cliente?.nombre || 'Mostrador'), 5, 34);
+    doc.text('Fecha: ' + new Date().toLocaleDateString('es-CO'), 5, 40);
     doc.text('─────────────────────', 40, 46, { align: 'center' });
 
     let y = 52;
-    (pedido.items || []).forEach((item) => {
-      const texto =
-        typeof item === 'string'
-          ? item
-          : `${item.personalizacion?.cantidad || 1}x ${item.producto?.nombre}`;
-      doc.text(texto.substring(0, 35), 5, y);
+    itemsPedido(p).forEach((i) => {
+      doc.text(i.cant + 'x ' + i.nombre.substring(0, 35), 5, y);
       y += 5;
     });
 
     doc.text('─────────────────────', 40, y + 2, { align: 'center' });
     doc.setFontSize(11);
-    doc.text(`TOTAL: ${formatearPrecioMenu(pedido.total)}`, 40, y + 10, { align: 'center' });
+    doc.text('TOTAL: ' + money(p.total), 40, y + 10, { align: 'center' });
     doc.setFontSize(8);
     doc.text('¡Gracias por tu compra!', 40, y + 18, { align: 'center' });
 
-    doc.save(`factura_${pedido.id}.pdf`);
+    doc.save('factura_pedido_' + p.id + '.pdf');
   };
 
   const descargarHistorialPDF = async () => {
-    const entregados = obtenerPedidos().filter((p) => p.status === 'entregado' || p.status === 'ready');
-    if (entregados.length === 0) {
-      alert('No hay pedidos entregados en este turno.');
-      return;
-    }
+    const entregados = pedidos.filter((p) => p.estado === 'entregado');
+    if (entregados.length === 0) return alert('No hay pedidos entregados en este turno.');
+
     const jsPDF = await getJsPDF();
     if (!jsPDF) return;
     const doc = new jsPDF();
-    const t = JSON.parse(localStorage.getItem('kaffaTurno')) || null;
 
     doc.setFontSize(20);
     doc.setTextColor(107, 76, 53);
     doc.text('KAFFA CAFÉ', 105, 20, { align: 'center' });
-
     doc.setFontSize(14);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Historial de Pedidos - Turno ${t?.tipo || 'AM'}`, 105, 30, { align: 'center' });
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-CO')}`, 105, 38, { align: 'center' });
-
+    doc.text('Historial de Pedidos Entregados', 105, 30, { align: 'center' });
+    doc.text('Fecha: ' + new Date().toLocaleDateString('es-CO'), 105, 38, { align: 'center' });
     doc.setLineWidth(0.5);
     doc.line(20, 45, 190, 45);
 
@@ -168,20 +212,13 @@ export default function PedidosView() {
     y += 8;
 
     let totalGeneral = 0;
-    entregados.forEach((pedido) => {
-      const total =
-        typeof pedido.total === 'string'
-          ? parseFloat(pedido.total.replace('$', '').replace(',', ''))
-          : pedido.total;
-      totalGeneral += total || 0;
-      const itemsTexto = (pedido.items || [])
-        .map((i) => (typeof i === 'string' ? i.split(' ')[0] : `${i.personalizacion?.cantidad}x`))
-        .join(', ');
-
-      doc.text(pedido.id || '-', 20, y);
-      doc.text((pedido.cliente || '-').substring(0, 20), 50, y);
+    entregados.forEach((p) => {
+      totalGeneral += Number(p.total) || 0;
+      const itemsTexto = itemsPedido(p).map((i) => i.cant + 'x').join(', ');
+      doc.text('#' + p.id, 20, y);
+      doc.text((p.cliente?.nombre || 'Mostrador').substring(0, 20), 50, y);
       doc.text(itemsTexto.substring(0, 30), 90, y);
-      doc.text(formatearPrecioMenu(pedido.total), 160, y);
+      doc.text(money(p.total), 160, y);
       y += 7;
       if (y > 270) {
         doc.addPage();
@@ -193,225 +230,263 @@ export default function PedidosView() {
     doc.line(20, y + 2, 190, y + 2);
     doc.setFontSize(12);
     doc.setFont(undefined, 'bold');
-    doc.text(`Total del Turno: ${formatearPrecioMenu(totalGeneral)}`, 160, y + 12, { align: 'right' });
-    doc.text(`Pedidos Entregados: ${entregados.length}`, 20, y + 12);
+    doc.text('Total Entregado: ' + money(totalGeneral), 160, y + 12, { align: 'right' });
+    doc.text('Pedidos: ' + entregados.length, 20, y + 12);
     doc.setFontSize(8);
     doc.setFont(undefined, 'normal');
     doc.text('Generado automáticamente por Sistema Kaffa', 105, 285, { align: 'center' });
-
-    doc.save(`historial_turno_${t?.tipo || 'AM'}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save('historial_entregados_' + new Date().toISOString().slice(0, 10) + '.pdf');
   };
 
-  const countdownFor = (pedido) => {
-    const expiresAt = (pedido.timestamp || Date.now()) + 3 * 60 * 1000;
-    const diff = expiresAt - now;
-    const isDisabled = diff > 0;
-    const time = isDisabled
-      ? `${Math.floor(diff / 60000).toString().padStart(2, '0')}:${Math.floor((diff % 60000) / 1000).toString().padStart(2, '0')}`
-      : null;
-    return { isDisabled, time, expiresAt };
-  };
+  const solicitudes = pedidos.filter((p) => (p.estado || 'pendiente') === 'pendiente');
+  const preparacion = pedidos.filter((p) => p.estado === 'pagado');
+  const entregados = pedidos.filter((p) => p.estado === 'entregado' || p.estado === 'cancelado');
 
-  const renderContenidoTarjeta = (pedido) => {
-    const items = pedido.items || [];
-    const fecha =
-      pedido.time ||
-      new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  const renderContenido = (p) => {
+    const metodo = (p.pagos || []).map((pg) => pg.medio_pago?.nombre || 'Pago').join(', ') || 'Sin pagar';
     return (
       <div className="ticket-content">
         <div className="ticket-header">
-          <span className="ticket-id">#{pedido.id}</span>
-          <span className="ticket-time">{fecha}</span>
+          <span className="ticket-id">#{p.id}</span>
+          <span className="ticket-time">{fechaHora(p.created_at)}</span>
         </div>
-        <div className="ticket-cliente">{pedido.cliente || 'Cliente'}</div>
+        <div className="ticket-cliente">{p.cliente?.nombre || 'Mostrador'}</div>
         <div className="ticket-items">
-          {items.map((item, i) => {
-            if (typeof item === 'string') {
-              const match = item.match(/^(\d+)x\s*(.+)/);
-              return (
-                <div className="ticket-item" key={i}>
-                  <span className="ticket-item-name">{match ? match[2] : item}</span>
-                  <span className="ticket-item-qty">{match ? match[1] : '1'}</span>
-                </div>
-              );
-            }
-            return (
-              <div className="ticket-item" key={i}>
-                <span className="ticket-item-name">{item.producto?.nombre || 'Producto'}</span>
-                <span className="ticket-item-qty">{item.personalizacion?.cantidad || 1}</span>
-              </div>
-            );
-          })}
+          {itemsPedido(p).map((i, idx) => (
+            <div className="ticket-item" key={idx}>
+              <span className="ticket-item-name">{i.nombre}</span>
+              <span className="ticket-item-qty">{i.cant}</span>
+            </div>
+          ))}
         </div>
         <div className="ticket-footer">
-          <span className="ticket-total">{formatearPrecioMenu(pedido.total)}</span>
-          <span className="ticket-metodo">{pedido.metodoPago || 'Efectivo'}</span>
+          <span className="ticket-total">{money(p.total)}</span>
+          <span className="ticket-metodo">{p.estado === 'cancelado' ? 'Cancelado' : metodo}</span>
         </div>
       </div>
     );
   };
-
-  const solicitudes = pedidos.filter((p) => (p.status || 'pending') === 'pending');
-  const preparacion = pedidos.filter((p) => p.status === 'prep');
-  const entregados = pedidos.filter((p) => p.status === 'ready' || p.status === 'entregado');
 
   return (
     <div className="content-section active" id="pedidos">
       <div className="turno-indicator">
         <h2>
           <i className="fa-solid fa-coffee"></i> PEDIDOS TURNO{' '}
-          <span id="turnoActual">{turno?.tipo || '—'}</span>
+          <span>{turnoActivo ? turno.turno_info.tipo.toUpperCase() : '—'}</span>
         </h2>
-        <span className={`turno-badge ${turno ? 'activo' : 'cerrado'}`} id="turnoBadge">
-          <i className="fa-solid fa-circle"></i> {turno ? 'ACTIVO' : 'CERRADO'}
+        <span className={`turno-badge ${turnoActivo ? 'activo' : 'cerrado'}`}>
+          <i className="fa-solid fa-circle"></i> {turnoActivo ? `ACTIVO · ${turno.turno_info.minutos_restantes} min` : 'SIN TURNO'}
         </span>
+        <button className="btn-primary" onClick={abrirNuevoPedido} style={{ marginLeft: 'auto' }}>
+          <i className="fa-solid fa-plus"></i> Registrar Pedido
+        </button>
       </div>
+
+      {!turnoActivo && (
+        <p className="text-muted" style={{ margin: '8px 0', fontSize: '13px' }}>
+          <i className="fa-solid fa-circle-info"></i> Sin turno activo no puedes cobrar ni cambiar estados (regla del backend).
+          Si estás en horario (07:00–18:00) y no tienes turno, pide al administrador que te asigne uno.
+        </p>
+      )}
 
       <div className="kanban-board">
         <div className="kanban-column solicitudes">
           <div className="kanban-column-header">
-            <span>
-              <i className="fa-solid fa-inbox"></i> Solicitudes
-            </span>
+            <span><i className="fa-solid fa-inbox"></i> Solicitudes (Pendiente)</span>
             <span className="kanban-column-count">{solicitudes.length}</span>
           </div>
           <div className="kanban-column-body">
-            {solicitudes.map((pedido) => {
-              const personalizado = esPersonalizado(pedido);
-              const { isDisabled, time } = countdownFor(pedido);
-              const cd = (
-                <div
-                  className={`barista-countdown${isDisabled ? '' : ' ready'}`}
-                  style={
-                    isDisabled
-                      ? undefined
-                      : { background: '#d4edda', color: '#155724', border: '1px solid #c3e6cb' }
-                  }
-                >
-                  <i className="fa-solid fa-stopwatch"></i>{' '}
-                  {isDisabled ? `Esperando al cliente: ${time}` : '¡Listo para confirmar! '}
-                  {!isDisabled && <i className="fa-solid fa-circle-check"></i>}
+            {solicitudes.map((p) => (
+              <div className="ticket-card" key={p.id}>
+                {renderContenido(p)}
+                <div className="ticket-actions">
+                  <button className="btn-ticket btn-verificar" onClick={() => abrirCobro(p)} disabled={!turnoActivo}>
+                    <i className="fa-solid fa-hand-holding-dollar"></i> {pagadoTotal(p) > 0 ? 'CONFIRMAR PAGO' : 'COBRAR'}
+                  </button>
+                  <button className="btn-ticket btn-cancelar" onClick={() => cancelar(p.id)} disabled={!turnoActivo}>
+                    <i className="fa-solid fa-times"></i>
+                  </button>
                 </div>
-              );
-              const contenido = renderContenidoTarjeta(pedido);
-
-              if (personalizado) {
-                return (
-                  <div className="ticket-flip-container" key={pedido.id}>
-                    <div className={`ticket-flip-inner${flipped[pedido.id] ? ' flipped' : ''}`}>
-                      <div className="ticket-front">
-                        <div
-                          className="ticket-card personalizado"
-                          onClick={() => setFlipped((f) => ({ ...f, [pedido.id]: !f[pedido.id] }))}
-                        >
-                          {cd}
-                          {contenido}
-                          <div className="ticket-actions">
-                            <button
-                              className="btn-ticket btn-verificar"
-                              disabled={isDisabled}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                verificarPedido(pedido.id);
-                              }}
-                            >
-                              <i className="fa-solid fa-check"></i> VERIFICADO
-                            </button>
-                            <button
-                              className="btn-ticket btn-cancelar"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                cancelarPedido(pedido.id);
-                              }}
-                            >
-                              <i className="fa-solid fa-times"></i>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="ticket-back">
-                        <h4>
-                          <i className="fa-solid fa-wand-magic-sparkles"></i> Personalización
-                        </h4>
-                        <ul className="personalizacion-list">
-                          {obtenerPersonalizaciones(pedido).map((p, i) => (
-                            <li key={i}>{p}</li>
-                          ))}
-                        </ul>
-                        <button
-                          className="btn-volver"
-                          onClick={() => setFlipped((f) => ({ ...f, [pedido.id]: !f[pedido.id] }))}
-                        >
-                          <i className="fa-solid fa-arrow-left"></i> Volver
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <div className="ticket-card" key={pedido.id}>
-                  {cd}
-                  {contenido}
-                  <div className="ticket-actions">
-                    <button className="btn-ticket btn-verificar" disabled={isDisabled} onClick={() => verificarPedido(pedido.id)}>
-                      <i className="fa-solid fa-check"></i> VERIFICADO
-                    </button>
-                    <button className="btn-ticket btn-cancelar" onClick={() => cancelarPedido(pedido.id)}>
-                      <i className="fa-solid fa-times"></i>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+              </div>
+            ))}
+            {solicitudes.length === 0 && <p className="text-muted" style={{ textAlign: 'center', padding: '16px' }}>Sin solicitudes</p>}
           </div>
         </div>
 
         <div className="kanban-column preparacion">
           <div className="kanban-column-header">
-            <span>
-              <i className="fa-solid fa-blender"></i> En Preparación
-            </span>
+            <span><i className="fa-solid fa-blender"></i> Pagado / Preparación</span>
             <span className="kanban-column-count">{preparacion.length}</span>
           </div>
           <div className="kanban-column-body">
-            {preparacion.map((pedido) => (
-              <div className={`ticket-card${esPersonalizado(pedido) ? ' personalizado' : ''}`} key={pedido.id}>
-                {renderContenidoTarjeta(pedido)}
+            {preparacion.map((p) => (
+              <div className="ticket-card" key={p.id}>
+                {renderContenido(p)}
                 <div className="ticket-actions">
-                  <button className="btn-ticket btn-entregar" onClick={() => entregarPedido(pedido.id)}>
+                  <button className="btn-ticket btn-entregar" onClick={() => entregar(p.id)} disabled={!turnoActivo}>
                     <i className="fa-solid fa-hand-holding"></i> ENTREGAR
+                  </button>
+                  <button className="btn-ticket btn-cancelar" onClick={() => cancelar(p.id)} disabled={!turnoActivo}>
+                    <i className="fa-solid fa-times"></i>
                   </button>
                 </div>
               </div>
             ))}
+            {preparacion.length === 0 && <p className="text-muted" style={{ textAlign: 'center', padding: '16px' }}>Nada en preparación</p>}
           </div>
         </div>
 
         <div className="kanban-column entregados">
           <div className="kanban-column-header">
-            <span>
-              <i className="fa-solid fa-check-circle"></i> Entregados
-            </span>
+            <span><i className="fa-solid fa-check-circle"></i> Entregados / Cancelados</span>
             <span className="kanban-column-count">{entregados.length}</span>
           </div>
           <div className="kanban-column-body">
-            {entregados.map((pedido) => (
-              <div className="ticket-card" key={pedido.id}>
-                {renderContenidoTarjeta(pedido)}
-                <div className="ticket-actions">
-                  <button className="btn-ticket btn-factura" onClick={() => imprimirFactura(pedido.id)}>
-                    <i className="fa-solid fa-receipt"></i> IMPRIMIR FACTURA
-                  </button>
-                </div>
+            {entregados.map((p) => (
+              <div className="ticket-card" key={p.id}>
+                {renderContenido(p)}
+                {p.estado === 'entregado' && (
+                  <div className="ticket-actions">
+                    <button className="btn-ticket btn-factura" onClick={() => imprimirFactura(p.id)}>
+                      <i className="fa-solid fa-receipt"></i> FACTURA PDF
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
+            {entregados.length === 0 && <p className="text-muted" style={{ textAlign: 'center', padding: '16px' }}>Sin entregados</p>}
           </div>
           <button className="btn-download-pdf" onClick={descargarHistorialPDF}>
             <i className="fa-solid fa-file-pdf"></i> Descargar Historial
           </button>
         </div>
       </div>
+
+      {/* MODAL COBRAR */}
+      {cobrarPedido && (
+        <div className="modal-overlay" style={{ display: 'flex' }}>
+          <div className="modal-content">
+            <button className="modal-close" onClick={() => setCobrarPedido(null)}>&times;</button>
+            <h2><i className="fa-solid fa-coins"></i> {pagadoTotal(cobrarPedido.pedido) > 0 ? 'Confirmar Pago' : 'Registrar Pago'}</h2>
+            <p className="text-muted">
+              Pedido #{cobrarPedido.pedido.id} · Total: <b>{money(cobrarPedido.pedido.total)}</b>
+            </p>
+            {(cobrarPedido.pedido.pagos || []).length > 0 && (
+              <div style={{ background: 'var(--surface-alt)', padding: '10px', borderRadius: '8px', marginBottom: '10px' }}>
+                <b>Pagos enviados por el cliente:</b>
+                {cobrarPedido.pedido.pagos.map((pg, i) => (
+                  <p key={i} style={{ fontSize: '0.85rem', margin: '4px 0' }}>
+                    {pg.medio_pago?.nombre}: {money(pg.monto)}{' '}
+                    {pg.comprobante_url && <a href={pg.comprobante_url} target="_blank" rel="noreferrer">ver comprobante</a>}
+                  </p>
+                ))}
+              </div>
+            )}
+            {Math.abs(pagadoTotal(cobrarPedido.pedido) - Number(cobrarPedido.pedido.total || 0)) > 0.01 && (
+              <>
+                <div className="form-group">
+                  <label>Medio de Pago</label>
+                  <select value={cobrarPedido.medio_id} onChange={(e) => setCobrarPedido((c) => ({ ...c, medio_id: e.target.value }))}>
+                    {medios.map((m) => (
+                      <option key={m.id} value={m.id}>{m.nombre}{m.es_virtual ? ' (virtual)' : ''}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Monto</label>
+                  <input type="number" min="0.01" step="0.01" value={cobrarPedido.monto} onChange={(e) => setCobrarPedido((c) => ({ ...c, monto: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label>URL Comprobante (medio virtual)</label>
+                  <input type="text" placeholder="https://..." value={cobrarPedido.comprobante} onChange={(e) => setCobrarPedido((c) => ({ ...c, comprobante: e.target.value }))} />
+                </div>
+              </>
+            )}
+            <div className="form-actions">
+              <button className="btn-secondary" onClick={() => setCobrarPedido(null)}>Cancelar</button>
+              <button className="btn-primary" onClick={confirmarCobro} disabled={saving}>
+                <i className="fa-solid fa-check"></i> {saving ? 'Procesando…' : 'Pasar a preparación'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NUEVO PEDIDO */}
+      {nuevoPedido && (
+        <div className="modal-overlay" style={{ display: 'flex' }}>
+          <div className="modal-content" style={{ maxWidth: '640px' }}>
+            <button className="modal-close" onClick={() => setNuevoPedido(null)}>&times;</button>
+            <h2><i className="fa-solid fa-clipboard-list"></i> Registrar Pedido</h2>
+
+            <div className="form-group">
+              <label>Cliente (opcional)</label>
+              <select value={nuevoPedido.cliente_id} onChange={(e) => setNuevoPedido((n) => ({ ...n, cliente_id: e.target.value }))}>
+                <option value="">Sin cliente (mostrador)</option>
+                {contactos.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nombre || c.correo}</option>
+                ))}
+              </select>
+            </div>
+
+            <h4 style={{ margin: '4px 0' }}><i className="fa-solid fa-mug-hot"></i> Productos</h4>
+            {nuevoPedido.detalles.map((d, idx) => {
+              const prod = productos.find((p) => p.id == d.producto_id);
+              return (
+                <div className="form-row-dynamic" key={idx} style={{ marginBottom: '6px' }}>
+                  <select style={{ flex: 2 }} value={d.producto_id} onChange={(e) => setNuevoPedido((n) => ({ ...n, detalles: n.detalles.map((x, i) => (i === idx ? { ...x, producto_id: e.target.value } : x)) }))}>
+                    {productos.map((p) => (
+                      <option key={p.id} value={p.id}>{p.nombre} ({money(p.precio_venta)})</option>
+                    ))}
+                  </select>
+                  <input type="number" min="1" style={{ flex: '0 0 80px' }} value={d.cantidad} onChange={(e) => setNuevoPedido((n) => ({ ...n, detalles: n.detalles.map((x, i) => (i === idx ? { ...x, cantidad: e.target.value } : x)) }))} />
+                  {prod && <span style={{ alignSelf: 'center', fontSize: '13px', minWidth: '90px', textAlign: 'right' }}>{money((Number(prod.precio_venta) || 0) * (Number(d.cantidad) || 0))}</span>}
+                  <button type="button" className="btn-icon delete" onClick={() => setNuevoPedido((n) => ({ ...n, detalles: n.detalles.filter((_, i) => i !== idx) }))}>
+                    <i className="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+              );
+            })}
+            <button type="button" className="btn-secondary" style={{ marginTop: '8px' }} onClick={() => setNuevoPedido((n) => ({ ...n, detalles: [...n.detalles, { producto_id: productos[0]?.id || '', cantidad: 1 }] }))}>
+              <i className="fa-solid fa-plus"></i> Agregar producto
+            </button>
+
+            <h4 style={{ margin: '12px 0 4px' }}><i className="fa-solid fa-coins"></i> Pagos</h4>
+            {nuevoPedido.pagos.map((p, idx) => (
+              <div className="form-row-dynamic" key={idx} style={{ marginBottom: '6px' }}>
+                <select style={{ flex: 2 }} value={p.medio_pago_id} onChange={(e) => setNuevoPedido((n) => ({ ...n, pagos: n.pagos.map((x, i) => (i === idx ? { ...x, medio_pago_id: e.target.value } : x)) }))}>
+                  {medios.map((m) => (
+                    <option key={m.id} value={m.id}>{m.nombre}{m.es_virtual ? ' (virtual)' : ''}</option>
+                  ))}
+                </select>
+                <input type="number" min="0.01" step="0.01" placeholder="Monto" style={{ flex: 1 }} value={p.monto} onChange={(e) => setNuevoPedido((n) => ({ ...n, pagos: n.pagos.map((x, i) => (i === idx ? { ...x, monto: e.target.value } : x)) }))} />
+                <input type="text" placeholder="URL comprobante (si virtual)" style={{ flex: 1 }} value={p.comprobante} onChange={(e) => setNuevoPedido((n) => ({ ...n, pagos: n.pagos.map((x, i) => (i === idx ? { ...x, comprobante: e.target.value } : x)) }))} />
+                <button type="button" className="btn-icon delete" onClick={() => setNuevoPedido((n) => ({ ...n, pagos: n.pagos.filter((_, i) => i !== idx) }))}>
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            ))}
+            <button type="button" className="btn-secondary" style={{ marginTop: '8px' }} onClick={() => setNuevoPedido((n) => ({ ...n, pagos: [...n.pagos, { medio_pago_id: medios[0]?.id || '', monto: '', comprobante: '' }] }))}>
+              <i className="fa-solid fa-plus"></i> Agregar pago
+            </button>
+
+            <div className="form-group" style={{ marginTop: '12px' }}>
+              <label>Estado inicial</label>
+              <select value={nuevoPedido.estado} onChange={(e) => setNuevoPedido((n) => ({ ...n, estado: e.target.value }))}>
+                <option value="pendiente">Pendiente</option>
+                <option value="pagado">Pagado</option>
+              </select>
+            </div>
+
+            <div className="form-actions">
+              <button className="btn-secondary" onClick={() => setNuevoPedido(null)}>Cancelar</button>
+              <button className="btn-primary" onClick={guardarPedido} disabled={saving || !turnoActivo}>
+                <i className="fa-solid fa-floppy-disk"></i> Guardar Pedido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

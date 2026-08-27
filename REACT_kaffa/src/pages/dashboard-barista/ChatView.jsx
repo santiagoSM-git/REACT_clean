@@ -1,47 +1,55 @@
 import { useEffect, useRef, useState } from 'react';
-import { Storage } from '../../lib/storage';
-import { showToast } from '../../lib/utils';
-import { avatarLetra, escapeHtml } from './helpers';
-
-function ordenarChats(lista) {
-  return lista.slice().sort((a, b) => {
-    const ta = a.messages.length ? a.messages[a.messages.length - 1].ts : 0;
-    const tb = b.messages.length ? b.messages[b.messages.length - 1].ts : 0;
-    return tb - ta;
-  });
-}
+import { Auth } from '../../lib/auth';
+import { Api } from '../../lib/api';
 
 export default function ChatView() {
-  const [chats, setChats] = useState(() => ordenarChats(Storage.getChats()));
-  const [chatAbierto, setChatAbierto] = useState(null);
+  const [contactos, setContactos] = useState([]);
+  const [chatAbierto, setChatAbierto] = useState(null); // { id, nombre }
   const [chatThread, setChatThread] = useState([]);
   const [chatInput, setChatInput] = useState('');
-  const unreadPrev = useRef(0);
   const chatMessagesRef = useRef(null);
 
+  const cargarBandeja = async () => {
+    try {
+      const resp = await Api.get('/mensajes');
+      const lista = (resp.contactos || []).map((c) => ({
+        id: c.contacto?.id,
+        nombre: c.contacto?.nombre || c.contacto?.correo || 'Cliente',
+        ultimo_mensaje: c.ultimo_mensaje,
+        ultima_hora: c.ultima_hora,
+        no_leidos: c.no_leidos || 0,
+      }));
+      setContactos(lista);
+    } catch {
+      /* se reintenta */
+    }
+  };
+
+  const cargarThread = async (userId) => {
+    try {
+      const resp = await Api.get('/mensajes', { con: userId });
+      const mensajes = Api.unwrapList(resp.mensajes).items.slice().reverse();
+      setChatThread(mensajes);
+      try {
+        await Api.post('/mensajes/leer', { con: userId });
+      } catch {
+        /* noop */
+      }
+      cargarBandeja();
+    } catch {
+      /* noop */
+    }
+  };
+
   useEffect(() => {
-    unreadPrev.current = Storage.totalChatsNoLeidos('barista');
+    cargarBandeja();
     const interval = setInterval(() => {
-      const total = Storage.totalChatsNoLeidos('barista');
-      if (total > unreadPrev.current && total > 0) {
-        const conves = Storage.getChats()
-          .filter((c) => c.unreadBarista > 0)
-          .sort((a, b) => (b.unreadBarista || 0) - (a.unreadBarista || 0));
-        const origen = conves.length ? conves[0].cliente : 'Cliente';
-        showToast(`💬 ${origen} te escribió un mensaje`, 'info');
-      }
-      unreadPrev.current = total;
-      if (chatAbierto) {
-        const conv = Storage.getChat(chatAbierto);
-        if (conv && conv.unreadBarista > 0) {
-          Storage.marcarChatLeido(chatAbierto, 'barista');
-          setChatThread((conv && conv.messages) || []);
-        }
-      }
-      setChats(ordenarChats(Storage.getChats()));
-    }, 3000);
+      cargarBandeja();
+      if (chatAbierto) cargarThread(chatAbierto.id);
+    }, 5000);
     return () => clearInterval(interval);
-  }, [chatAbierto]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatAbierto?.id]);
 
   useEffect(() => {
     if (chatMessagesRef.current) {
@@ -49,62 +57,54 @@ export default function ChatView() {
     }
   }, [chatThread]);
 
-  const openChat = (username) => {
-    setChatAbierto(username);
-    Storage.marcarChatLeido(username, 'barista');
-    const conv = Storage.getChat(username);
-    setChatThread((conv && conv.messages) || []);
-    setChats(ordenarChats(Storage.getChats()));
+  const openChat = async (c) => {
+    setChatAbierto(c);
+    await cargarThread(c.id);
   };
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!chatInput.trim()) return;
-    if (!chatAbierto) {
-      alert('Selecciona una conversación.');
-      return;
+    if (!chatAbierto) return alert('Selecciona una conversación.');
+    try {
+      await Api.post('/mensajes', { destinatario_id: chatAbierto.id, mensaje: chatInput.trim() });
+      setChatInput('');
+      cargarThread(chatAbierto.id);
+    } catch (err) {
+      alert('❌ ' + Api.firstError(err));
     }
-    Storage.sendMessage(chatAbierto, 'barista', chatInput.trim());
-    setChatInput('');
-    const conv = Storage.getChat(chatAbierto);
-    setChatThread((conv && conv.messages) || []);
-    setChats(ordenarChats(Storage.getChats()));
   };
+
+  const noLeidos = contactos.reduce((s, c) => s + c.no_leidos, 0);
+  const yo = Auth.getCurrentUser();
 
   return (
     <div className="content-section active" id="chat">
       <h2 className="section-title">
-        <i className="fa-solid fa-comments"></i> Chat con Clientes
+        <i className="fa-solid fa-comments"></i> Chat con Clientes{' '}
+        {noLeidos > 0 && <span className="chat-unread-badge" style={{ display: 'inline-block', marginLeft: '8px' }}>{noLeidos}</span>}
       </h2>
       <div className="chat-inbox">
-        <div className="chat-inbox-list" id="chatInbox">
-          {chats.length === 0 ? (
-            <p className="text-muted" style={{ padding: '20px', textAlign: 'center' }}>
-              Sin conversaciones aún.
-            </p>
+        <div className="chat-inbox-list">
+          {contactos.length === 0 ? (
+            <p className="text-muted" style={{ padding: '20px', textAlign: 'center' }}>Sin conversaciones aún.</p>
           ) : (
-            chats.map((c) => {
-              const last = c.messages[c.messages.length - 1];
-              const unread = c.unreadBarista || 0;
-              const activa = chatAbierto === c.username ? 'active' : '';
-              const badge = unread > 0 ? <span className="chat-unread-badge">{unread}</span> : null;
-              const preview = last
-                ? `${last.from === 'barista' ? 'Tú: ' : ''}${String(last.text).substring(0, 40)}`
-                : '';
-              return (
-                <div className={`chat-inbox-item ${activa}`} key={c.username} onClick={() => openChat(c.username)}>
-                  <div className="chat-inbox-avatar">{avatarLetra(c.cliente)}</div>
+            contactos
+              .slice()
+              .sort((a, b) => new Date(b.ultima_hora || 0) - new Date(a.ultima_hora || 0))
+              .map((c) => (
+                <div className={`chat-inbox-item${chatAbierto?.id === c.id ? ' active' : ''}`} key={c.id} onClick={() => openChat(c)}>
+                  <div className="chat-inbox-avatar">{(c.nombre || '?').charAt(0).toUpperCase()}</div>
                   <div className="chat-inbox-info">
                     <div className="chat-inbox-name">
-                      {c.cliente} {badge}
+                      {c.nombre} {c.no_leidos > 0 && <span className="chat-unread-badge">{c.no_leidos}</span>}
                     </div>
-                    <div className="chat-inbox-preview">{preview}</div>
+                    <div className="chat-inbox-preview">{String(c.ultimo_mensaje || '').substring(0, 40)}</div>
                   </div>
                 </div>
-              );
-            })
+              ))
           )}
         </div>
-        <div className="chat-thread" id="chatThread">
+        <div className="chat-thread">
           {!chatAbierto ? (
             <div className="chat-thread-empty">
               <i className="fa-solid fa-comments" style={{ fontSize: '3rem', color: 'var(--text-muted)', opacity: 0.4 }}></i>
@@ -113,22 +113,16 @@ export default function ChatView() {
           ) : (
             <>
               <div className="chat-thread-header">
-                <span className="chat-thread-name">
-                  <i className="fa-solid fa-user"></i> {chatAbierto}
-                </span>
+                <span className="chat-thread-name"><i className="fa-solid fa-user"></i> {chatAbierto.nombre}</span>
               </div>
-              <div className="chat-messages" id="chatMessages" ref={chatMessagesRef}>
+              <div className="chat-messages" ref={chatMessagesRef}>
                 {chatThread.length === 0 ? (
-                  <p className="text-muted" style={{ textAlign: 'center', padding: '20px' }}>
-                    Sin mensajes.
-                  </p>
+                  <p className="text-muted" style={{ textAlign: 'center', padding: '20px' }}>Sin mensajes.</p>
                 ) : (
-                  chatThread.map((m, i) => (
-                    <div className={`message ${m.from === 'barista' ? 'sent' : 'received'}`} key={i}>
-                      {escapeHtml(m.text)}
-                      <div className="meta">
-                        {new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
+                  chatThread.map((m) => (
+                    <div className={`message ${m.remitente_id == yo?.id ? 'sent' : 'received'}`} key={m.id}>
+                      {m.mensaje}
+                      <div className="meta">{new Date(m.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</div>
                     </div>
                   ))
                 )}

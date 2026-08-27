@@ -1,155 +1,129 @@
 /**
- * KAFFA - Módulo de Autenticación
- * Manejo centralizado de login, logout y verificaciones (portado desde js/auth.js)
+ * KAFFA - Módulo de Autenticación (API Laravel Sanctum)
+ * Login/registro reales contra /api/v1. Roles desde usuario.roles.
  */
-import { Storage } from './storage';
+import { Api } from './api';
 
 export const Auth = {
-  // Credenciales de administrador (demo)
-  ADMIN_CREDENTIALS: {
-    username: 'admin',
-    password: 'admin123',
-  },
+  // ── Estado ──
 
-  // ── Verificaciones de estado ──
   isLoggedIn() {
-    const user = Storage.getCurrentUser();
-    return user && Object.keys(user).length > 0;
+    return !!Api.getToken();
   },
 
   getCurrentUser() {
-    return Storage.getCurrentUser();
+    return Api.getUser();
   },
 
+  /** Rol principal (primer rol asignado por el backend). */
   getRole() {
     const user = Auth.getCurrentUser();
-    return user?.role || null;
+    if (!user) return null;
+    const roles = user.roles || [];
+    if (roles.length && roles[0].nombre) return roles[0].nombre;
+    return user.primary_role || null;
   },
 
-  isAdmin() {
-    return Auth.getRole() === 'admin';
+  hasRole(rol) {
+    const user = Auth.getCurrentUser();
+    return !!(user && (user.roles || []).some((r) => r.nombre === rol));
   },
-  isBarista() {
-    return Auth.getRole() === 'barista';
-  },
-  isCliente() {
-    return Auth.getRole() === 'cliente';
+
+  isAdmin: () => Auth.hasRole('admin'),
+  isBarista: () => Auth.hasRole('barista'),
+  isCliente: () => Auth.hasRole('cliente'),
+
+  // ── Redirección según rol ──
+
+  redirectFor(rol) {
+    if (rol === 'admin') return '/admin-dashboard';
+    if (rol === 'barista') return '/barista-dashboard';
+    if (rol === 'cliente') return '/cliente-dashboard';
+    return '/';
   },
 
   // ── Autenticación ──
-  login(username, password) {
-    // 1. Administrador
-    if (
-      username === Auth.ADMIN_CREDENTIALS.username &&
-      password === Auth.ADMIN_CREDENTIALS.password
-    ) {
-      const user = { username, role: 'admin' };
-      Storage.setCurrentUser(user);
-      return {
-        success: true,
-        user,
-        role: 'admin',
-        redirect: '/admin-dashboard',
-        message: '✅ Bienvenido al panel de administración!',
-      };
-    }
 
-    // 2. Barista
-    const baristas = Storage.getBaristas();
-    const barista = baristas.find(
-      (b) =>
-        (b.usuario === username || b.username === username) &&
-        (b.pass === password || b.password === password),
-    );
-    if (barista) {
-      const user = {
-        username: barista.usuario || barista.username,
-        nombre: barista.nombre,
-        role: 'barista',
-      };
-      Storage.setCurrentUser(user);
-      return {
-        success: true,
-        user,
-        role: 'barista',
-        redirect: '/barista-dashboard',
-        message: `✅ Hola ${barista.nombre}! Turno iniciado.`,
-      };
-    }
+  /**
+   * POST /login con correo y password.
+   * @returns {Promise<Object>} { success, role, redirect, message }
+   */
+  async login(correo, password) {
+    try {
+      const resp = await Api.post('/login', { correo, password });
+      Api.setToken(resp.access_token);
+      Api.setUser(resp.usuario);
 
-    // 3. Cliente
-    const usuario = Storage.findUsuario(username);
-    if (usuario && usuario.password === password) {
-      const user = {
-        username: usuario.username,
-        email: usuario.email,
-        nombre: usuario.nombre,
-        role: 'cliente',
-      };
-      Storage.setCurrentUser(user);
-      Storage.set(Storage.KEYS.CLIENTE, true);
+      const role = resp.usuario.roles && resp.usuario.roles[0] ? resp.usuario.roles[0].nombre : null;
+
       return {
         success: true,
-        user,
+        role,
+        redirect: Auth.redirectFor(role),
+        message: `✅ Bienvenido ${resp.usuario.nombre || ''}`,
+        turno_activo: resp.turno_activo,
+        turno_info: resp.turno_info,
+      };
+    } catch (err) {
+      if (err.status === 401) {
+        return { success: false, message: '❌ Credenciales inválidas. Verifica correo y contraseña.' };
+      }
+      if (err.status === 403) {
+        return { success: false, message: `❌ ${err.message || 'Acceso denegado.'}` };
+      }
+      if (err.status === 429) {
+        return { success: false, message: '⏳ Demasiados intentos. Espera un minuto.' };
+      }
+      return { success: false, message: `❌ ${err.message}` };
+    }
+  },
+
+  /**
+   * POST /registro (crea usuario rol cliente y auto-inicia sesión).
+   */
+  async register(data) {
+    try {
+      const resp = await Api.post('/registro', data);
+      Api.setToken(resp.access_token);
+      Api.setUser(resp.usuario);
+      return {
+        success: true,
         role: 'cliente',
         redirect: '/cliente-dashboard',
-        message: `✅ Bienvenido ${usuario.nombre || usuario.username}! Disfruta tu café ☕`,
+        message: '✅ ¡Registro exitoso! Bienvenido a KAFFA.',
       };
+    } catch (err) {
+      return { success: false, message: `❌ ${Api.firstError(err)}` };
     }
-
-    // 4. Credenciales inválidas
-    return {
-      success: false,
-      user: null,
-      role: null,
-      redirect: null,
-      message: '❌ Usuario o contraseña incorrectos. Por favor verifica tus datos.',
-    };
   },
 
-  logout(redirectTo = null) {
-    Storage.clearSession();
-    return redirectTo || '/';
-  },
-
-  // ── Registro ──
-  register(data) {
-    const { nombre, username, email, password } = data;
-    const usuarios = Storage.getUsuarios();
-
-    if (usuarios.find((u) => u.username === username)) {
-      return {
-        success: false,
-        message: '❌ Este nombre de usuario ya está en uso. Por favor elige otro.',
-      };
+  /** POST /logout + limpieza local. */
+  async logout() {
+    try {
+      await Api.post('/logout');
+    } catch {
+      /* token ya inválido */
     }
-    if (usuarios.find((u) => u.email === email)) {
-      return {
-        success: false,
-        message: '❌ Este correo electrónico ya está registrado.',
-      };
+    Api.clearToken();
+    localStorage.removeItem('kaffaUser');
+  },
+
+  // ── Protección de páginas ──
+
+  /**
+   * Valida la sesión contra GET /me y exige rol si se indica.
+   * @returns {Promise<Object|null>} usuario válido o null
+   */
+  async requireAuth(requiredRole = null) {
+    if (!Api.getToken()) return null;
+
+    try {
+      const user = await Api.get('/me');
+      Api.setUser(user);
+      if (requiredRole && !Auth.hasRole(requiredRole)) return null;
+      return user;
+    } catch {
+      return null;
     }
-
-    const nuevoUsuario = {
-      nombre,
-      username,
-      email,
-      password,
-      role: 'cliente',
-      fechaRegistro: new Date().toISOString(),
-    };
-    Storage.addUsuario(nuevoUsuario);
-
-    return { success: true, message: '✅ ¡Registro exitoso! Ahora puedes iniciar sesión.' };
-  },
-
-  // ── Protección de rutas ──
-  requireAuth(requiredRole = null) {
-    if (!Auth.isLoggedIn()) return false;
-    if (requiredRole && Auth.getRole() !== requiredRole) return false;
-    return true;
-  },
-  requireCliente() {
-    return Boolean(Storage.get(Storage.KEYS.CLIENTE));
   },
 };

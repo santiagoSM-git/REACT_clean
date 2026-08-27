@@ -3,7 +3,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useStyles } from '../../hooks/useStyles';
 import { useDashboardTheme } from '../../hooks/useDashboardTheme';
 import { Auth } from '../../lib/auth';
-import { Storage } from '../../lib/storage';
+import { Api } from '../../lib/api';
 import { BaristaProvider, useBarista } from './BaristaContext.jsx';
 import SidebarBarista from './SidebarBarista';
 
@@ -11,7 +11,7 @@ const SECTION_TITLES = {
   pedidos: { icon: 'fa-columns', title: 'Tablero de Pedidos' },
   inventario: { icon: 'fa-boxes-stacked', title: 'Inventario' },
   chat: { icon: 'fa-comments', title: 'Chat Cliente' },
-  caja: { icon: 'fa-cash-register', title: 'Cierre de Caja' },
+  caja: { icon: 'fa-cash-register', title: 'Caja' },
 };
 
 function BaristaLayoutInner() {
@@ -19,48 +19,25 @@ function BaristaLayoutInner() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { theme, toggleTheme } = useDashboardTheme();
-  const { turno, iniciarTurno } = useBarista();
+  const { turno, refrescarTurno } = useBarista();
 
   const [user, setUser] = useState(() => Auth.getCurrentUser());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [turnoPickerOpen, setTurnoPickerOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [profile, setProfile] = useState({ name: '', email: '', avatar: null });
+  const [profile, setProfile] = useState({ name: '', email: '', password: '', avatar: null });
+  const [savingProfile, setSavingProfile] = useState(false);
   const profileFileInputRef = useRef(null);
 
   const sectionKey = pathname.split('/').pop() || 'pedidos';
   const current = SECTION_TITLES[sectionKey] || SECTION_TITLES.pedidos;
 
-  // ── Guard de autenticación ──
   useEffect(() => {
-    const sessionData = Auth.getCurrentUser();
-    if (!sessionData || sessionData.role !== 'barista') {
-      alert('Acceso denegado.');
-      navigate('/login', { replace: true });
-      return;
-    }
-    const oldAvatar = localStorage.getItem('baristaAvatar');
-    if (oldAvatar && !sessionData.avatar) {
-      sessionData.avatar = oldAvatar;
-      Storage.setCurrentUser(sessionData);
-    }
-    localStorage.removeItem('baristaAvatar');
-    setUser(sessionData);
-    setProfile({
-      name: sessionData.nombre || 'Barista',
-      email: sessionData.email || 'barista@kaffa.com',
-      avatar: sessionData.avatar || null,
-    });
-  }, [navigate]);
-
-  // ── Selector de turno al entrar sin turno activo ──
-  useEffect(() => {
-    if (!turno || !turno.activo) setTurnoPickerOpen(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const u = Auth.getCurrentUser();
+    setUser(u);
+    setProfile({ name: u?.nombre || '', email: u?.correo || '', password: '', avatar: u?.avatar || null });
   }, []);
 
-  // ── Cerrar dropdown al hacer clic fuera ──
   useEffect(() => {
     const onClick = (e) => {
       if (!e.target.closest('.profile-trigger')) setDropdownOpen(false);
@@ -69,21 +46,37 @@ function BaristaLayoutInner() {
     return () => document.removeEventListener('click', onClick);
   }, []);
 
-  const logout = () => {
-    if (window.confirm('¿Cerrar sesión?')) {
-      Storage.remove(Storage.KEYS.USER);
-      navigate('/');
+  const openProfile = () => {
+    const u = Auth.getCurrentUser() || {};
+    setProfile({ name: u.nombre || '', email: u.correo || '', password: '', avatar: u.avatar || null });
+    setProfileOpen(true);
+  };
+
+  const saveProfile = async () => {
+    const u = Auth.getCurrentUser() || {};
+    const body = { nombre: profile.name.trim(), correo: profile.email.trim() };
+    if (profile.password) body.password = profile.password;
+    if (!body.nombre || !body.correo) return alert('Nombre y correo requeridos');
+
+    setSavingProfile(true);
+    try {
+      const actualizado = await Api.put('/perfil', body);
+      const next = { ...u, ...actualizado, avatar: profile.avatar || u.avatar };
+      Api.setUser(next);
+      setUser(next);
+      setProfileOpen(false);
+    } catch (err) {
+      alert('❌ ' + Api.firstError(err));
+    } finally {
+      setSavingProfile(false);
     }
   };
 
-  const saveProfile = () => {
-    const u = Auth.getCurrentUser() || {};
-    u.nombre = profile.name;
-    u.email = profile.email;
-    if (profile.avatar) u.avatar = profile.avatar;
-    Storage.setCurrentUser(u);
-    setUser(u);
-    setProfileOpen(false);
+  const logout = async () => {
+    if (window.confirm('¿Cerrar sesión?')) {
+      await Auth.logout();
+      navigate('/login');
+    }
   };
 
   const profileAvatar =
@@ -91,51 +84,13 @@ function BaristaLayoutInner() {
     user?.avatar ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nombre || 'Barista')}&background=293f2c&color=fff`;
 
+  const turnoActivo = turno?.turno_activo && turno?.turno_info;
+
   return (
     <>
-      <div
-        className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`}
-        onClick={() => setSidebarOpen(false)}
-      ></div>
+      <div className={`sidebar-overlay${sidebarOpen ? ' open' : ''}`} onClick={() => setSidebarOpen(false)}></div>
 
-      {/* SELECTOR DE TURNO */}
-      {turnoPickerOpen && (
-        <div className="turno-overlay" id="turnoOverlay">
-          <div className="turno-overlay-icon">
-            <i className="fa-solid fa-mug-hot"></i>
-          </div>
-          <h2>Seleccionar Turno</h2>
-          <p>
-            No hay un turno activo. Puedes iniciar uno para llevar el control de tus entregas, o
-            trabajar sin turno.
-          </p>
-          <button
-            className="btn-iniciar-turno"
-            onClick={() => {
-              iniciarTurno('AM');
-              setTurnoPickerOpen(false);
-            }}
-          >
-            <i className="fa-solid fa-sun"></i> Iniciar Turno AM
-          </button>
-          <button
-            className="btn-iniciar-turno pm"
-            onClick={() => {
-              iniciarTurno('PM');
-              setTurnoPickerOpen(false);
-            }}
-          >
-            <i className="fa-solid fa-moon"></i> Iniciar Turno PM
-          </button>
-          <button className="btn-cerrar-turno-picker" onClick={() => setTurnoPickerOpen(false)}>
-            Trabajar sin turno
-          </button>
-        </div>
-      )}
-
-      {/* CONTENEDOR PRINCIPAL: sidebar + contenido, lado a lado.
-          data-theme se sincroniza con el estado del tema para que el
-          toggle claro/oscuro funcione dentro del panel. */}
+      {/* CONTENEDOR PRINCIPAL */}
       <div className="barista-container" data-theme={theme}>
         <div className="barista-sidebar">
           <SidebarBarista open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -153,25 +108,16 @@ function BaristaLayoutInner() {
             </div>
 
             <div className="profile-wrap" style={{ marginLeft: 'auto' }}>
-              {!turno && (
-                <button className="btn-turno-header" onClick={() => setTurnoPickerOpen(true)}>
-                  <i className="fa-solid fa-mug-hot"></i> Iniciar Turno
-                </button>
-              )}
-              <button
-                className="theme-toggle"
-                onClick={toggleTheme}
-                title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
-              >
+              <span className={`turno-badge ${turnoActivo ? 'activo' : 'cerrado'}`} style={{ marginRight: '10px' }}>
+                <i className="fa-solid fa-circle"></i>{' '}
+                {turnoActivo
+                  ? `TURNO ${turno.turno_info.tipo.toUpperCase()} · ${turno.turno_info.minutos_restantes} min`
+                  : 'SIN TURNO ACTIVO'}
+              </span>
+              <button className="theme-toggle" onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
                 <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
               </button>
-              <div
-                className="profile-trigger"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDropdownOpen((v) => !v);
-                }}
-              >
+              <div className="profile-trigger" onClick={(e) => { e.stopPropagation(); setDropdownOpen((v) => !v); }}>
                 <img src={profileAvatar} className="profile-avatar" alt="Perfil" />
                 <div className="profile-info">
                   <div className="profile-name">{user?.nombre || 'Barista'}</div>
@@ -179,7 +125,7 @@ function BaristaLayoutInner() {
                 </div>
                 <i className="fa-solid fa-caret-down" style={{ fontSize: '11px', color: 'var(--text-muted)' }}></i>
                 <div className={`profile-dropdown${dropdownOpen ? ' show' : ''}`}>
-                  <div className="dropdown-item" onClick={() => setProfileOpen(true)}>
+                  <div className="dropdown-item" onClick={openProfile}>
                     <i className="fa-solid fa-user-pen"></i> Editar Perfil
                   </div>
                   <div className="dropdown-item logout" onClick={logout}>
@@ -190,20 +136,16 @@ function BaristaLayoutInner() {
             </div>
           </div>
 
-          <Outlet />
+          <Outlet context={{ refrescarTurno }} />
         </main>
       </div>
 
       {/* MODAL PERFIL */}
       {profileOpen && (
-        <div className="modal-overlay" style={{ display: 'flex' }} id="modalProfile">
+        <div className="modal-overlay" style={{ display: 'flex' }}>
           <div className="modal-content">
-            <button className="modal-close" onClick={() => setProfileOpen(false)}>
-              &times;
-            </button>
-            <h2>
-              <i className="fa-solid fa-user-gear"></i> Mi Perfil
-            </h2>
+            <button className="modal-close" onClick={() => setProfileOpen(false)}>&times;</button>
+            <h2><i className="fa-solid fa-user-gear"></i> Mi Perfil</h2>
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
               <img src={profile.avatar || profileAvatar} className="profile-modal-avatar" alt="Perfil" />
               <br />
@@ -226,42 +168,19 @@ function BaristaLayoutInner() {
             </div>
             <div className="form-group">
               <label>Nombre Completo</label>
-              <input
-                type="text"
-                value={profile.name}
-                onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
-                required
-              />
+              <input type="text" value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} required />
             </div>
             <div className="form-group">
               <label>Correo Electrónico</label>
-              <input
-                type="email"
-                value={profile.email}
-                onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))}
-                required
-              />
+              <input type="email" value={profile.email} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} required />
             </div>
             <div className="form-group">
-              <label>
-                <i className="fa-solid fa-palette"></i> Tema
-              </label>
-              <select
-                value={theme}
-                onChange={(e) => {
-                  localStorage.setItem('kaffaTheme', e.target.value);
-                  window.location.reload();
-                }}
-              >
-                <option value="light">Claro</option>
-                <option value="dark">Oscuro</option>
-              </select>
+              <label>Nueva Contraseña (opcional)</label>
+              <input type="password" value={profile.password} placeholder="Mín. 8: mayúscula, minúscula, número y símbolo" onChange={(e) => setProfile((p) => ({ ...p, password: e.target.value }))} />
             </div>
             <div className="form-actions">
-              <button className="btn-secondary" onClick={() => setProfileOpen(false)}>
-                Cancelar
-              </button>
-              <button className="btn-primary" onClick={saveProfile}>
+              <button className="btn-secondary" onClick={() => setProfileOpen(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={saveProfile} disabled={savingProfile}>
                 <i className="fa-solid fa-floppy-disk"></i> Guardar
               </button>
             </div>

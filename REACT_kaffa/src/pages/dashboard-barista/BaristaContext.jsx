@@ -1,41 +1,34 @@
-import { createContext, useCallback, useContext, useState } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { Api } from '../../lib/api';
 
+/**
+ * Turno del barista según el backend (GET /turno-activo).
+ * Los turnos los asigna el administrador (tabla turnos + barista_turno);
+ * el barista sólo consulta su estado y el tiempo restante.
+ */
 const BaristaContext = createContext(null);
 
-function leerTurno() {
-  return JSON.parse(localStorage.getItem('kaffaTurno')) || null;
-}
-
 export function BaristaProvider({ children }) {
-  const [turno, setTurnoState] = useState(() => leerTurno());
+  const [turno, setTurno] = useState(null); // { turno_activo, turno_info }
 
-  const setTurno = useCallback((t) => {
-    localStorage.setItem('kaffaTurno', JSON.stringify(t));
-    setTurnoState(t);
-  }, []);
-
-  const iniciarTurno = useCallback(
-    (tipo) => {
-      setTurno({ tipo, inicio: new Date().toISOString(), activo: true, pedidosEntregados: [] });
-    },
-    [setTurno],
-  );
-
-  const cerrarTurno = useCallback(() => {
-    const t = leerTurno();
-    if (t) {
-      t.activo = false;
-      t.fin = new Date().toISOString();
-      const historial = JSON.parse(localStorage.getItem('kaffaHistorialTurnos')) || [];
-      historial.push(t);
-      localStorage.setItem('kaffaHistorialTurnos', JSON.stringify(historial));
+  const refrescarTurno = useCallback(async () => {
+    try {
+      const resp = await Api.get('/turno-activo');
+      setTurno(resp);
+    } catch (err) {
+      setTurno({ turno_activo: false, turno_info: null, error: Api.firstError(err) });
     }
-    localStorage.removeItem('kaffaTurno');
-    setTurnoState(null);
   }, []);
+
+  useEffect(() => {
+    refrescarTurno();
+    const interval = setInterval(refrescarTurno, 60000);
+    return () => clearInterval(interval);
+  }, [refrescarTurno]);
 
   return (
-    <BaristaContext.Provider value={{ turno, setTurno, iniciarTurno, cerrarTurno }}>
+    <BaristaContext.Provider value={{ turno, refrescarTurno }}>
       {children}
     </BaristaContext.Provider>
   );

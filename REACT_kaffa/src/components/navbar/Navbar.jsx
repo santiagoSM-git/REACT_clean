@@ -63,7 +63,7 @@ const ICONS = {
   ),
 };
 
-function NavItem({ to, label, page, icon }) {
+function NavItem({ to, label, page }) {
   return (
     <li data-page={page}>
       <NavLink to={to} className={({ isActive }) => (isActive ? 'active' : undefined)}>

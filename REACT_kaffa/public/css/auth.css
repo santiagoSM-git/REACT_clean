@@ -28,3 +28,26 @@
 .password-wrapper i:hover {
   color: #333;
 }
+
+.login-feedback {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e74c3c;
+  min-height: 1.2em;
+}
+
+.auth-error {
+  display: block;
+  color: #e74c3c;
+  font-size: 0.78rem;
+  margin-top: 4px;
+}
+
+.auth-page .text-muted,
+.input-group .text-muted {
+  display: block;
+  color: #888;
+  font-size: 0.75rem;
+  margin-top: 4px;
+}
