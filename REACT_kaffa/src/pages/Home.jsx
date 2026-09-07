@@ -2,15 +2,19 @@ import { Link } from 'react-router-dom';
 import { useStyles } from '../hooks/useStyles';
 import { useBodyClass } from '../hooks/useBodyClass';
 import { ProductosStore } from '../lib/productos-store';
+import { useCatalogo } from '../hooks/useCatalogo';
 import ProductCard from '../components/product/ProductCard';
 
 function Home() {
   useStyles(['style.css']);
   useBodyClass('home-page');
 
-  const destacados = ProductosStore.obtenerTodos()
-    .filter((p) => p.categoria === 'Cafés')
-    .slice(0, 3);
+  const { productos, esDemo } = useCatalogo();
+
+  // Destacados: productos reales de la API; si no hay backend, Cafés de la demo.
+  const destacados = esDemo
+    ? ProductosStore.obtenerTodos().filter((p) => p.categoria === 'Cafés').slice(0, 3)
+    : productos.slice(0, 3);
 
   return (
     <>

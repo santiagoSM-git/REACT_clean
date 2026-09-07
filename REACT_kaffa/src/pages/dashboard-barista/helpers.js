@@ -22,6 +22,7 @@ export function itemsPedido(p) {
   return (p.detalles || []).map((d) => ({
     nombre: d.producto?.nombre || 'Producto',
     cant: Number(d.cantidad) || 1,
+    nota: d.nota || '',
   }));
 }
 

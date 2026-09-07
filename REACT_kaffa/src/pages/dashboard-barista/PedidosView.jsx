@@ -256,6 +256,11 @@ export default function PedidosView() {
             <div className="ticket-item" key={idx}>
               <span className="ticket-item-name">{i.nombre}</span>
               <span className="ticket-item-qty">{i.cant}</span>
+              {i.nota && (
+                <div className="ticket-item-note">
+                  <i className="fa-solid fa-note-sticky"></i> {i.nota}
+                </div>
+              )}
             </div>
           ))}
         </div>

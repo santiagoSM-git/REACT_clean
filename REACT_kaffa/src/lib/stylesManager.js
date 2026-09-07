@@ -8,7 +8,8 @@
  *
  * - CSS públicos:  ['style.css']
  * - Auth:          ['auth.css']
- * - Dashboards:    ['dashboard-base.css', 'dashboard-admin.css' | 'cliente.css' | 'dashboard.css']
+ * - Dashboards:    ['dashboard-base.css', 'dashboard-admin.css' | 'dashboard.css']
+ * - Widgets cliente en el sitio público: ['cliente-home.css'] (scopeado)
  *
  * Se usa un contador de referencia por hoja para soportar montaje/desmontaje
  * de múltiples componentes (StrictMode) y rutas anidadas sin cortar estilos.

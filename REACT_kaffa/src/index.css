@@ -72,25 +72,3 @@
     width: 260px;
   }
 }
-
-/* ─────────────────────────────────────────────
-   Layout del Dashboard Cliente
-   cliente.css también aplica `body { display:flex; height:100vh }`
-   con `.main-content { flex:1 }`, por lo que necesita un wrapper
-   flex (igual que el panel de Barista) en lugar de confiar en body.
-   ───────────────────────────────────────────── */
-.cliente-container {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-.cliente-container > .sidebar {
-  flex-shrink: 0;
-}
-
-.cliente-container > .main-content {
-  flex: 1;
-  min-width: 0;
-}

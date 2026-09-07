@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react';
-import { NavLink, Link, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Auth } from '../../lib/auth';
+import { useCarrito } from '../../context/CarritoContext';
+import { useChatNoLeidos } from '../../hooks/useChatNoLeidos';
 
 const LINKS = [
   { to: '/', label: 'Inicio', page: 'index', icon: 'home' },
@@ -61,6 +64,41 @@ const ICONS = {
       <line x1="23" y1="11" x2="17" y2="11" />
     </svg>
   ),
+  user: (
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  ),
+  logout: (
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  ),
+  cart: (
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+    </svg>
+  ),
+  orders: (
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <line x1="3" y1="6" x2="3.01" y2="6" />
+      <line x1="3" y1="12" x2="3.01" y2="12" />
+      <line x1="3" y1="18" x2="3.01" y2="18" />
+    </svg>
+  ),
+  chat: (
+    <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  ),
 };
 
 function NavItem({ to, label, page }) {
@@ -87,7 +125,38 @@ function SidebarItem({ to, label, page, icon }) {
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const isHomePage = location.pathname === '/';
+
+  // Sesión: el cliente se queda en el sitio público con sus funciones habilitadas
+  const [user, setUser] = useState(() => (Auth.isLoggedIn() ? Auth.getCurrentUser() : null));
+  const esCliente = !!user && Auth.isCliente();
+
+  const carrito = useCarrito();
+  const noLeidos = useChatNoLeidos(esCliente);
+  const [dropOpen, setDropOpen] = useState(false);
+  const userWrapRef = useRef(null);
+
+  useEffect(() => {
+    const refresh = () => setUser(Auth.isLoggedIn() ? Auth.getCurrentUser() : null);
+    refresh();
+    window.addEventListener('kaffa-auth-change', refresh);
+    return () => window.removeEventListener('kaffa-auth-change', refresh);
+  }, [location.pathname]);
+
+  // Cerrar el dropdown del usuario al navegar o hacer clic fuera
+  useEffect(() => {
+    setDropOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!dropOpen) return undefined;
+    const onClick = (e) => {
+      if (userWrapRef.current && !userWrapRef.current.contains(e.target)) setDropOpen(false);
+    };
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, [dropOpen]);
 
   // Efecto de scroll: sombra en el navbar solo en la página de inicio
   useEffect(() => {
@@ -119,6 +188,16 @@ function Navbar() {
     setMenuOpen(true);
     document.body.style.overflow = 'hidden';
   };
+
+  const handleLogout = async () => {
+    await Auth.logout();
+    closeMenu();
+    setDropOpen(false);
+    navigate('/', { replace: true });
+  };
+
+  const firstName = (user?.nombre || '').split(' ')[0];
+  const cartCount = carrito?.cart.length || 0;
 
   useEffect(() => {
     return () => {
@@ -155,12 +234,55 @@ function Navbar() {
       </ul>
 
       <div className="navbar-actions">
-        <Link to="/registro" className="nav-btn nav-btn-outline">
-          Registrarse
-        </Link>
-        <Link to="/login" className="nav-btn nav-btn-solid">
-          Iniciar Sesión
-        </Link>
+        {user ? (
+          <>
+            {esCliente && carrito && (
+              <button type="button" className="nav-cart" onClick={carrito.abrirCarro} title="Mi carrito" aria-label="Mi carrito">
+                {ICONS.cart}
+                {cartCount > 0 && <span className="nav-badge">{cartCount}</span>}
+              </button>
+            )}
+            {esCliente ? (
+              <div className="nav-user-wrap" ref={userWrapRef}>
+                <button
+                  type="button"
+                  className="nav-btn nav-btn-outline"
+                  onClick={() => setDropOpen((v) => !v)}
+                  style={{ font: 'inherit', background: 'none' }}
+                >
+                  Hola, {firstName} <i className="fa-solid fa-caret-down" style={{ marginLeft: 6 }}></i>
+                </button>
+                <div className={`nav-dropdown${dropOpen ? ' open' : ''}`}>
+                  <button type="button" onClick={() => { setDropOpen(false); carrito?.abrirPerfil(); }}>
+                    {ICONS.user} Mi Perfil
+                  </button>
+                  <NavLink to="/pedidos">Mis Pedidos</NavLink>
+                  <NavLink to="/chat">
+                    Chat Barista
+                    {noLeidos > 0 && <span className="nav-badge">{noLeidos}</span>}
+                  </NavLink>
+                  <div className="dropdown-sep"></div>
+                  <button type="button" className="dropdown-logout" onClick={handleLogout}>
+                    {ICONS.logout} Cerrar Sesión
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" className="nav-btn nav-btn-solid" onClick={handleLogout} style={{ font: 'inherit' }}>
+                Cerrar Sesión
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <Link to="/registro" className="nav-btn nav-btn-outline">
+              Registrarse
+            </Link>
+            <Link to="/login" className="nav-btn nav-btn-solid">
+              Iniciar Sesión
+            </Link>
+          </>
+        )}
       </div>
 
       <div
@@ -185,18 +307,75 @@ function Navbar() {
           </ul>
           <div className="sidebar-divider"></div>
           <ul className="sidebar-auth">
-            <li>
-              <NavLink to="/login" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-                {ICONS.login}
-                Iniciar Sesión
-              </NavLink>
-            </li>
-            <li>
-              <NavLink to="/registro" className={({ isActive }) => (isActive ? 'active' : undefined)}>
-                {ICONS.register}
-                Registrarse
-              </NavLink>
-            </li>
+            {user ? (
+              <>
+                <li>
+                  <span className="nav-btn" style={{ cursor: 'default', border: 'none' }}>
+                    {ICONS.user}
+                    {user.nombre}
+                  </span>
+                </li>
+                {esCliente && carrito && (
+                  <>
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => { carrito.abrirPerfil(); closeMenu(); }}
+                        style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer' }}
+                      >
+                        {ICONS.user}
+                        Mi Perfil
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => { carrito.abrirCarro(); closeMenu(); }}
+                        style={{ background: 'none', border: 'none', color: 'inherit', font: 'inherit', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', cursor: 'pointer' }}
+                      >
+                        {ICONS.cart}
+                        Carrito
+                        {cartCount > 0 && <span className="nav-badge">{cartCount}</span>}
+                      </button>
+                    </li>
+                    <li>
+                      <NavLink to="/pedidos">
+                        {ICONS.orders}
+                        Mis Pedidos
+                      </NavLink>
+                    </li>
+                    <li>
+                      <NavLink to="/chat">
+                        {ICONS.chat}
+                        Chat Barista
+                        {noLeidos > 0 && <span className="nav-badge">{noLeidos}</span>}
+                      </NavLink>
+                    </li>
+                  </>
+                )}
+                <li>
+                  <NavLink to="/" onClick={handleLogout}>
+                    {ICONS.logout}
+                    Cerrar Sesión
+                  </NavLink>
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  <NavLink to="/login" className={({ isActive }) => (isActive ? 'active' : undefined)}>
+                    {ICONS.login}
+                    Iniciar Sesión
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink to="/registro" className={({ isActive }) => (isActive ? 'active' : undefined)}>
+                    {ICONS.register}
+                    Registrarse
+                  </NavLink>
+                </li>
+              </>
+            )}
           </ul>
         </div>
       </aside>

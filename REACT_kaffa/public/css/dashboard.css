@@ -249,6 +249,14 @@ body {
 .ticket-item:last-child { border-bottom: none; }
 .ticket-item-name { color: var(--text, #1a3116); }
 
+.ticket-item-note {
+  flex-basis: 100%;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--primary, #39A900);
+  padding: 2px 0 0 2px;
+}
+
 .ticket-item-qty {
   background: var(--primary, #39A900);
   color: #fff;

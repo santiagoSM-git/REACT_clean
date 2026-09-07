@@ -1,0 +1,363 @@
+/* ─────────────────────────────────────────────
+   KAFFA - Widgets de cliente en el sitio público
+   Todo está SCOPEADO bajo .cliente-home para NO colisionar
+   con style.css (pantallas del sitio público).
+   Extracción fiel de dashboard-base.css + cliente.css,
+   sin reglas de body/.sidebar/.header que romperían el sitio.
+   ───────────────────────────────────────────── */
+
+.cliente-home .modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  animation: khFadeIn 0.2s ease;
+}
+
+.cliente-home .modal-overlay.open { display: flex; }
+
+.cliente-home .modal-content {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 30px;
+  width: 90%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+  animation: khModalSlideIn 0.25s ease;
+  position: relative;
+  color: #1a3116;
+  font-family: 'Poppins', sans-serif;
+}
+
+.cliente-home .modal-close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.cliente-home .modal-close:hover { color: #1a3116; }
+
+.cliente-home .modal-content h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a3116;
+  margin-bottom: 18px;
+}
+
+/* ── FORMS (perfil) ── */
+.cliente-home .form-group { margin-bottom: 14px; }
+
+.cliente-home .form-group label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #3a5a2e;
+  margin-bottom: 5px;
+}
+
+.cliente-home .form-group input,
+.cliente-home .form-group select,
+.cliente-home .form-group textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: #fff;
+  color: #1a3116;
+  box-sizing: border-box;
+}
+
+.cliente-home .form-group input:focus,
+.cliente-home .form-group select:focus,
+.cliente-home .form-group textarea:focus {
+  border-color: #39A900;
+  box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.12);
+}
+
+.cliente-home .form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.cliente-home .profile-modal-avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #39A900;
+}
+
+.cliente-home .text-muted { color: #888; }
+
+/* ── CARRITO ── */
+.cliente-home .cart-item {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+.cliente-home .cart-item-nota {
+  margin: -4px 0 10px;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: #3a5a2e;
+}
+
+/* ── Selector de cantidad ── */
+.cliente-home .qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cliente-home .qty-stepper button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid #39A900;
+  background: #fff;
+  color: #39A900;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.cliente-home .qty-stepper button:hover {
+  background: #39A900;
+  color: #fff;
+}
+
+.cliente-home .qty-stepper span {
+  min-width: 26px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.cliente-home .qty-stepper em {
+  margin-left: auto;
+  font-style: normal;
+  color: #39A900;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.cliente-home .qty-stepper.qty-sm button {
+  width: 24px;
+  height: 24px;
+  font-size: 0.85rem;
+}
+
+.cliente-home .qty-stepper.qty-sm span {
+  min-width: 18px;
+  font-size: 0.85rem;
+}
+
+/* ── PAGO ── */
+.cliente-home .payment-options {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.cliente-home .payment-opt {
+  flex: 1;
+  border: 1.5px solid rgba(0, 0, 0, 0.10);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.cliente-home .payment-opt:hover { border-color: #39A900; }
+
+.cliente-home .payment-opt.selected {
+  border-color: #39A900;
+  background: #f0f7f0;
+  color: #39A900;
+  font-weight: 600;
+}
+
+/* ── CHAT ── */
+.cliente-home .chat-layout {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 10px;
+  height: calc(100vh - 260px);
+  min-height: 420px;
+  max-height: 640px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.cliente-home .chat-header {
+  padding: 14px 16px;
+  background: #293f2c;
+  color: #fff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cliente-home .chat-header img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.cliente-home .chat-messages {
+  flex: 1;
+  background: #f5f5f5;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cliente-home .msg {
+  padding: 10px 14px;
+  border-radius: 10px;
+  max-width: 75%;
+  font-size: 14px;
+  line-height: 1.4;
+  position: relative;
+}
+
+.cliente-home .msg-barista {
+  background: #fff;
+  align-self: flex-start;
+  border-top-left-radius: 0;
+  color: #1a3116;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.cliente-home .msg-user {
+  background: #39A900;
+  align-self: flex-end;
+  border-top-right-radius: 0;
+  color: #fff;
+}
+
+.cliente-home .msg .meta {
+  font-size: 0.65rem;
+  opacity: 0.6;
+  margin-top: 4px;
+  text-align: right;
+}
+
+.cliente-home .chat-input {
+  padding: 12px 16px;
+  background: #fff;
+  display: flex;
+  gap: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.cliente-home .chat-input input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  border-radius: 20px;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  background: #fff;
+  color: #1a3116;
+}
+
+.cliente-home .chat-send-btn {
+  background: #39A900;
+  color: #fff;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.cliente-home .chat-send-btn:hover { background: #2D8A00; }
+
+.cliente-home .chat-unread-badge {
+  background: #e74c3c;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 10px;
+  padding: 0 5px;
+  text-align: center;
+  display: inline-block;
+  margin-left: 6px;
+}
+
+/* ── PEDIDOS (lista) ── */
+.cliente-home .pedido-card {
+  background: #fff;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.cliente-home .pedido-estado {
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* ── Animaciones propias (prefijo kh para no chocar) ── */
+@keyframes khFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes khModalSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 500px) {
+  .cliente-home .modal-content { padding: 20px; width: 95%; }
+}

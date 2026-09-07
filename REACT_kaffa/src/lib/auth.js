@@ -4,6 +4,13 @@
  */
 import { Api } from './api';
 
+/** Notifica a la UI (Navbar, etc.) que cambió la sesión. */
+function notifyAuthChange() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('kaffa-auth-change'));
+  }
+}
+
 export const Auth = {
   // ── Estado ──
 
@@ -35,10 +42,14 @@ export const Auth = {
 
   // ── Redirección según rol ──
 
+  /**
+   * Redirección tras iniciar sesión.
+   * El cliente NO se va a otro menú: se queda en el home público con sus
+   * funciones habilitadas (estilo Rappi / MercadoLibre / Juan Valdez).
+   */
   redirectFor(rol) {
     if (rol === 'admin') return '/admin-dashboard';
     if (rol === 'barista') return '/barista-dashboard';
-    if (rol === 'cliente') return '/cliente-dashboard';
     return '/';
   },
 
@@ -53,6 +64,7 @@ export const Auth = {
       const resp = await Api.post('/login', { correo, password });
       Api.setToken(resp.access_token);
       Api.setUser(resp.usuario);
+      notifyAuthChange();
 
       const role = resp.usuario.roles && resp.usuario.roles[0] ? resp.usuario.roles[0].nombre : null;
 
@@ -86,10 +98,11 @@ export const Auth = {
       const resp = await Api.post('/registro', data);
       Api.setToken(resp.access_token);
       Api.setUser(resp.usuario);
+      notifyAuthChange();
       return {
         success: true,
         role: 'cliente',
-        redirect: '/cliente-dashboard',
+        redirect: '/',
         message: '✅ ¡Registro exitoso! Bienvenido a KAFFA.',
       };
     } catch (err) {
@@ -106,6 +119,8 @@ export const Auth = {
     }
     Api.clearToken();
     localStorage.removeItem('kaffaUser');
+    localStorage.removeItem('kaffaCarrito');
+    notifyAuthChange();
   },
 
   // ── Protección de páginas ──
@@ -120,6 +135,7 @@ export const Auth = {
     try {
       const user = await Api.get('/me');
       Api.setUser(user);
+      notifyAuthChange();
       if (requiredRole && !Auth.hasRole(requiredRole)) return null;
       return user;
     } catch {

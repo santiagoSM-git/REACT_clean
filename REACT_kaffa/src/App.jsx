@@ -8,7 +8,8 @@ import SobreNosotros from './pages/SobreNosotros';
 import Contacto from './pages/Contacto';
 import Login from './pages/Login';
 import Registro from './pages/Registro';
-import DashboardCliente from './pages/dashboard-cliente/DashboardCliente';
+import MisPedidos from './pages/MisPedidos';
+import ChatBarista from './pages/ChatBarista';
 import DashboardAdmin from './pages/dashboard-admin/DashboardAdmin';
 import BaristaLayout from './pages/dashboard-barista/BaristaLayout';
 import PedidosView from './pages/dashboard-barista/PedidosView';
@@ -26,6 +27,23 @@ function App() {
         <Route path="eventos" element={<Eventos />} />
         <Route path="sobre-nosotros" element={<SobreNosotros />} />
         <Route path="contacto" element={<Contacto />} />
+        {/* Funcionalidades del cliente: mismo sitio, mismas rutas públicas */}
+        <Route
+          path="pedidos"
+          element={
+            <RequireRole role="cliente">
+              <MisPedidos />
+            </RequireRole>
+          }
+        />
+        <Route
+          path="chat"
+          element={
+            <RequireRole role="cliente">
+              <ChatBarista />
+            </RequireRole>
+          }
+        />
       </Route>
 
       {/* Auth standalone (sin navbar ni footer) */}
@@ -33,14 +51,6 @@ function App() {
       <Route path="/registro" element={<Registro />} />
 
       {/* Dashboards protegidos por rol */}
-      <Route
-        path="/cliente-dashboard"
-        element={
-          <RequireRole role="cliente">
-            <DashboardCliente />
-          </RequireRole>
-        }
-      />
       <Route
         path="/admin-dashboard"
         element={

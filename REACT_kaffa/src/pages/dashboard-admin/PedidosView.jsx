@@ -74,7 +74,7 @@ export default function PedidosView() {
                 <EmptyRow cols={7} text="Sin pedidos" />
               ) : (
                 pedidos.map((p) => {
-                  const items = (p.detalles || []).map((d) => (Number(d.cantidad) || 1) + 'x ' + (d.producto?.nombre || '—')).join(', ');
+                  const items = (p.detalles || []).map((d) => (Number(d.cantidad) || 1) + 'x ' + (d.producto?.nombre || '—') + (d.nota ? ` (${d.nota})` : '')).join(', ');
                   return (
                     <tr key={p.id}>
                       <td><b>#{p.id}</b></td>
@@ -113,7 +113,7 @@ export default function PedidosView() {
             <b>Productos</b>
             {(detalle.detalles || []).map((d, i) => (
               <p key={i} style={{ fontSize: '0.85rem', padding: '2px 0' }}>
-                • {(Number(d.cantidad) || 1) + 'x ' + (d.producto?.nombre || '—')} — {money(d.subtotal ?? d.precio_unitario)}
+                • {(Number(d.cantidad) || 1) + 'x ' + (d.producto?.nombre || '—') + (d.nota ? ` (${d.nota})` : '')} — {money(d.subtotal ?? d.precio_unitario)}
               </p>
             ))}
             <p style={{ fontWeight: '700', marginTop: '8px' }}>Total: {money(detalle.total)}{Number(detalle.propina) ? ' (propina ' + money(detalle.propina) + ')' : ''}</p>

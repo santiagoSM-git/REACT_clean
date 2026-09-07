@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useStyles } from '../hooks/useStyles';
 import { useBodyClass } from '../hooks/useBodyClass';
@@ -19,6 +19,10 @@ function Login() {
     handleSubmit,
     formState: { errors },
   } = useForm({ mode: 'onBlur' });
+
+  // Si ya hay sesión activa no tiene sentido mostrar el formulario:
+  // se vuelve al sitio (evita el bucle Comprar → login → Comprar).
+  const yaAutenticado = Auth.isLoggedIn();
 
   const onSubmit = async (data) => {
     const correo = data.correo.trim();
@@ -40,6 +44,8 @@ function Login() {
       setFeedback(result.message);
     }
   };
+
+  if (yaAutenticado) return <Navigate to="/" replace />;
 
   return (
     <div className="container">
