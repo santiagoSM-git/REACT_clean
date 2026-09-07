@@ -21,7 +21,8 @@ function Login() {
   } = useForm({ mode: 'onBlur' });
 
   // Si ya hay sesión activa no tiene sentido mostrar el formulario:
-  // se vuelve al sitio (evita el bucle Comprar → login → Comprar).
+  // se vuelve a su destino según el rol (evita el bucle Comprar → login
+  // sin expulsar a admin/barista de sus paneles).
   const yaAutenticado = Auth.isLoggedIn();
 
   const onSubmit = async (data) => {
@@ -45,7 +46,7 @@ function Login() {
     }
   };
 
-  if (yaAutenticado) return <Navigate to="/" replace />;
+  if (yaAutenticado) return <Navigate to={Auth.redirectFor(Auth.getRole())} replace />;
 
   return (
     <div className="container">
