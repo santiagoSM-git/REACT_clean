@@ -80,6 +80,10 @@ export const Auth = {
       if (err.status === 401) {
         return { success: false, message: '❌ Credenciales inválidas. Verifica correo y contraseña.' };
       }
+      // Correo no verificado: se señaliza para que la UI ofrezca reenviar el correo.
+      if (err.status === 403 && err.code === 'EMAIL_NOT_VERIFIED') {
+        return { success: false, notVerified: true, correo, message: '⚠️ Debes verificar tu correo antes de entrar.' };
+      }
       if (err.status === 403) {
         return { success: false, message: `❌ ${err.message || 'Acceso denegado.'}` };
       }
@@ -91,19 +95,17 @@ export const Auth = {
   },
 
   /**
-   * POST /registro (crea usuario rol cliente y auto-inicia sesión).
+   * POST /registro (crea usuario rol cliente).
+   * La cuenta queda pendiente de verificación de correo: el backend ya no
+   * devuelve token, el usuario debe verificar su correo antes de entrar.
    */
   async register(data) {
     try {
       const resp = await Api.post('/registro', data);
-      Api.setToken(resp.access_token);
-      Api.setUser(resp.usuario);
-      notifyAuthChange();
       return {
         success: true,
-        role: 'cliente',
-        redirect: '/',
-        message: '✅ ¡Registro exitoso! Bienvenido a KAFFA.',
+        correo: resp.correo || data.correo,
+        message: resp.message || '✅ ¡Registro exitoso! Revisa tu correo.',
       };
     } catch (err) {
       return { success: false, message: `❌ ${Api.firstError(err)}` };
@@ -121,6 +123,38 @@ export const Auth = {
     localStorage.removeItem('kaffaUser');
     localStorage.removeItem('kaffaCarrito');
     notifyAuthChange();
+  },
+
+  // ── Recuperación de contraseña y verificación de correo ──
+
+  /** POST /forgot-password: solicita el enlace de restablecimiento. */
+  async forgotPassword(correo) {
+    try {
+      const resp = await Api.post('/forgot-password', { correo });
+      return { success: true, message: resp.message };
+    } catch (err) {
+      return { success: false, message: Api.firstError(err) };
+    }
+  },
+
+  /** POST /reset-password: guarda la nueva contraseña con el token del correo. */
+  async resetPassword(data) {
+    try {
+      const resp = await Api.post('/reset-password', data);
+      return { success: true, message: resp.message };
+    } catch (err) {
+      return { success: false, message: Api.firstError(err) };
+    }
+  },
+
+  /** POST /email/verification-notification: reenvía el correo de verificación. */
+  async resendVerification(correo) {
+    try {
+      const resp = await Api.post('/email/verification-notification', { correo });
+      return { success: true, message: resp.message };
+    } catch (err) {
+      return { success: false, message: Api.firstError(err) };
+    }
   },
 
   // ── Protección de páginas ──

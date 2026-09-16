@@ -1,16 +1,18 @@
-import { useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useStyles } from '../hooks/useStyles';
 import { useBodyClass } from '../hooks/useBodyClass';
 import { Auth } from '../lib/auth';
 import { isValidEmail } from '../lib/utils';
+import { toastSuccess, toastError } from '../lib/toast';
 
 function Login() {
   useStyles(['style.css', 'auth.css']);
   useBodyClass('login-page');
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,6 +21,19 @@ function Login() {
     handleSubmit,
     formState: { errors },
   } = useForm({ mode: 'onBlur' });
+
+  // Al volver del enlace de verificación del correo, el backend redirige aquí
+  // con ?verified=... en la URL: se notifica el resultado al usuario.
+  useEffect(() => {
+    const verified = searchParams.get('verified');
+    if (verified === '1') {
+      toastSuccess('¡Correo verificado! Ya puedes iniciar sesión.');
+    } else if (verified === 'already') {
+      toastSuccess('Tu correo ya estaba verificado. Inicia sesión.');
+    } else if (verified === 'invalid') {
+      toastError('El enlace de verificación es inválido o ya fue usado.');
+    }
+  }, [searchParams]);
 
   // Si ya hay sesión activa no tiene sentido mostrar el formulario:
   // se vuelve a su destino según el rol (evita el bucle Comprar → login
@@ -41,6 +56,9 @@ function Login() {
 
     if (result.success) {
       navigate(result.redirect);
+    } else if (result.notVerified) {
+      // Correo sin verificar: se lleva al aviso para reenviar el correo.
+      navigate('/verify-email?correo=' + encodeURIComponent(result.correo));
     } else {
       setFeedback(result.message);
     }
@@ -94,6 +112,9 @@ function Login() {
           </button>
         </form>
 
+        <p className="registro">
+          <Link to="/forgot-password">¿Olvidaste tu contraseña?</Link>
+        </p>
         <p className="registro">
           ¿No tienes cuenta? <Link to="/registro">Regístrate aquí</Link>
         </p>
