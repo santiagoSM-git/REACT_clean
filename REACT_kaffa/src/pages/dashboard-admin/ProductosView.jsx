@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Api } from '../../lib/api';
 import CrudModal from './CrudModal';
 import { EmptyRow, badgeActivo, money } from './helpers';
@@ -9,6 +9,7 @@ export default function ProductosView() {
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(null); // { id?, nombre, descripcion, imagen, precio_venta, categoria_id, activo }
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef(null);
 
   const cargar = async () => {
     try {
@@ -131,8 +132,34 @@ export default function ProductosView() {
             <textarea rows="2" value={modal.descripcion} onChange={(e) => setModal((m) => ({ ...m, descripcion: e.target.value }))}></textarea>
           </div>
           <div className="form-group">
-            <label>URL Imagen</label>
-            <input type="text" value={modal.imagen} placeholder="https://..." onChange={(e) => setModal((m) => ({ ...m, imagen: e.target.value }))} />
+            <label>Imagen</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button type="button" className="btn-secondary" onClick={() => fileInputRef.current?.click()}>
+                <i className="fa-solid fa-image"></i> Seleccionar imagen…
+              </button>
+              {modal.imagen && (
+                <>
+                  <img src={modal.imagen} alt="" style={{ width: '54px', height: '54px', borderRadius: '8px', objectFit: 'cover' }} />
+                  <button type="button" className="btn-icon delete" onClick={() => setModal((m) => ({ ...m, imagen: '' }))}>
+                    <i className="fa-solid fa-trash-can"></i>
+                  </button>
+                </>
+              )}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                hidden
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!file) return;
+                  const r = new FileReader();
+                  r.onload = (ev) => setModal((m) => ({ ...m, imagen: ev.target.result }));
+                  r.readAsDataURL(file);
+                }}
+              />
+            </div>
           </div>
           <div className="form-row">
             <div className="form-group">
