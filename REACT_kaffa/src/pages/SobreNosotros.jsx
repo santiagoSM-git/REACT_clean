@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useStyles } from '../hooks/useStyles';
+import { useEquipo } from '../hooks/useEquipo';
 
 const VALORES = [
   {
@@ -37,28 +39,131 @@ const GALERIA = [
   },
 ];
 
-const EQUIPO = [
-  {
-    src: 'https://img.freepik.com/foto-gratis/barista-profesional-trabajo-cafe_176532-11596.jpg',
-    nombre: 'María González',
-    cargo: 'Jefa de Baristas',
-  },
-  {
-    src: 'https://th.bing.com/th/id/R.5515c12d795c758e71b3768428189417?rik=EDJxiU67uyAuxQ&pid=ImgRaw&r=0',
-    nombre: 'Andrés Rivera',
-    cargo: 'Tostador / Catador',
-  },
-  {
-    src: 'https://excelso77.com/wp-content/uploads/2024/02/que-hace-un-barista-profesional-te-lo-contamos-a-detalle.webp',
-    nombre: 'Laura Méndez',
-    cargo: 'Experta en Métodos',
-  },
-  {
-    src: 'https://www.emcebar.org.mx/storage/2024/11/43b1ceec3e969edfbfb2c2e93dfca92a.webp',
-    nombre: 'Carlos R.',
-    cargo: 'Atención al Cliente',
-  },
+// Turnos del negocio (valores que entiende el backend: tabla `turnos.tipo`).
+const TURNOS = [
+  { valor: 'mañana', etiqueta: 'Mañana' },
+  { valor: 'tarde', etiqueta: 'Tarde' },
 ];
+
+/** Fecha de hoy en formato YYYY-MM-DD usando la hora local (sin desfase UTC). */
+function hoyLocal() {
+  return new Date().toLocaleDateString('en-CA');
+}
+
+/** Turno actual según el horario del negocio (mañana 07-13, tarde 13-18). */
+function turnoActual() {
+  return new Date().getHours() < 13 ? 'mañana' : 'tarde';
+}
+
+/** 'YYYY-MM-DD' → 'DD/MM/YYYY' en hora local (sin desfase de zona horaria). */
+function fechaLegible(fechaISO) {
+  const [anio, mes, dia] = fechaISO.split('-').map(Number);
+  return new Date(anio, mes - 1, dia).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function TeamCard({ foto, nombre, rol, meta }) {
+  return (
+    <div className="team-card">
+      {foto ? (
+        <img src={foto} alt={nombre} loading="lazy" />
+      ) : (
+        <div className="team-card-fallback" aria-hidden="true">
+          {(nombre || '?').charAt(0).toUpperCase()}
+        </div>
+      )}
+      <h4>{nombre}</h4>
+      <p>{rol}</p>
+      {meta && <p className="team-card-meta">{meta}</p>}
+    </div>
+  );
+}
+
+function EquipoSection() {
+  const [fecha, setFecha] = useState(hoyLocal);
+  const [tipo, setTipo] = useState(turnoActual);
+  const { administradora, baristas, cargando, error, reintentar } = useEquipo(fecha, tipo);
+
+  const turnoLabel = TURNOS.find((t) => t.valor === tipo)?.etiqueta || tipo;
+
+  return (
+    <section className="about-team">
+      <div className="section-header">
+        <span className="section-tag">Equipo</span>
+        <h2>Nuestro Equipo</h2>
+        <p>Un grupo de baristas y apasionados que traen KAFFA a la vida.</p>
+      </div>
+
+      <div className="team-controls">
+        <label className="team-control">
+          <span>Fecha</span>
+          <input
+            type="date"
+            value={fecha}
+            onChange={(e) => e.target.value && setFecha(e.target.value)}
+          />
+        </label>
+        <div className="team-turnos" role="group" aria-label="Turno">
+          {TURNOS.map((t) => (
+            <button
+              key={t.valor}
+              type="button"
+              className={t.valor === tipo ? 'active' : ''}
+              aria-pressed={t.valor === tipo}
+              onClick={() => setTipo(t.valor)}
+            >
+              {t.etiqueta}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {cargando && !administradora ? (
+        <p className="team-status">Cargando equipo…</p>
+      ) : error && !administradora ? (
+        <div className="team-status team-error">
+          <p>⚠️ {error}</p>
+          <button type="button" onClick={reintentar}>Reintentar</button>
+        </div>
+      ) : (
+        <div className="team-grid">
+          {administradora && (
+            <TeamCard
+              foto={administradora.foto}
+              nombre={administradora.nombre}
+              rol="Administradora"
+            />
+          )}
+          {error ? (
+            <div className="team-status team-error team-grid-msg">
+              <p>⚠️ {error}</p>
+              <button type="button" onClick={reintentar}>Reintentar</button>
+            </div>
+          ) : cargando ? (
+            <p className="team-status team-grid-msg">Cargando baristas…</p>
+          ) : baristas.length === 0 ? (
+            <p className="team-status team-grid-msg">
+              No hay baristas asignados para este turno.
+            </p>
+          ) : (
+            baristas.map((b) => (
+              <TeamCard
+                key={b.id}
+                foto={b.foto}
+                nombre={b.nombre}
+                rol="Barista"
+                meta={`${fechaLegible(fecha)} · ${turnoLabel}`}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
 
 function SobreNosotros() {
   useStyles(['style.css']);
@@ -123,22 +228,7 @@ function SobreNosotros() {
         </div>
       </section>
 
-      <section className="about-team">
-        <div className="section-header">
-          <span className="section-tag">Equipo</span>
-          <h2>Nuestro Equipo</h2>
-          <p>Un grupo de baristas y apasionados que traen KAFFA a la vida.</p>
-        </div>
-        <div className="team-grid">
-          {EQUIPO.map((miembro) => (
-            <div className="team-card" key={miembro.nombre}>
-              <img src={miembro.src} alt={miembro.nombre} loading="lazy" />
-              <h4>{miembro.nombre}</h4>
-              <p>{miembro.cargo}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <EquipoSection />
     </>
   );
 }

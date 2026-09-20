@@ -28,6 +28,7 @@ export default function BaristasView() {
     const body = {
       nombre: modal.nombre.trim(),
       correo: modal.correo.trim(),
+      foto: (modal.foto || '').trim() || null,
       activo: modal.activo,
     };
     if (!body.nombre || !body.correo) return alert('Nombre y correo requeridos');
@@ -74,7 +75,7 @@ export default function BaristasView() {
       <div className="box">
         <div className="box-top">
           <h3><i className="fa-solid fa-users"></i> Baristas</h3>
-          <button className="btn-primary" onClick={() => setModal({ id: null, nombre: '', correo: '', password: '', activo: true })}>
+          <button className="btn-primary" onClick={() => setModal({ id: null, nombre: '', correo: '', foto: '', password: '', activo: true })}>
             <i className="fa-solid fa-plus"></i> Agregar Barista
           </button>
         </div>
@@ -94,7 +95,7 @@ export default function BaristasView() {
                     <td>{fechaStr(b.created_at)}</td>
                     <td>{badgeActivo(b.activo)}</td>
                     <td>
-                      <button className="btn-icon edit" onClick={() => setModal({ id: b.id, nombre: b.nombre, correo: b.correo, password: '', activo: b.activo })}>
+                      <button className="btn-icon edit" onClick={() => setModal({ id: b.id, nombre: b.nombre, correo: b.correo, foto: b.foto || '', password: '', activo: b.activo })}>
                         <i className="fa-solid fa-pen-to-square"></i>
                       </button>{' '}
                       <button className="btn-icon delete" onClick={() => borrar(b.id)}><i className="fa-solid fa-trash-can"></i></button>
@@ -116,6 +117,10 @@ export default function BaristasView() {
           <div className="form-group">
             <label>Correo</label>
             <input type="email" value={modal.correo} onChange={(e) => setModal((m) => ({ ...m, correo: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label>URL de foto (opcional)</label>
+            <input type="url" value={modal.foto} placeholder="https://res.cloudinary.com/…" onChange={(e) => setModal((m) => ({ ...m, foto: e.target.value }))} />
           </div>
           <div className="form-group">
             <label>{modal.id ? 'Nueva Contraseña (opcional)' : 'Contraseña'}</label>
