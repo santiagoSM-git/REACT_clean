@@ -11,7 +11,7 @@ export default function PedidosView() {
   const [contactos, setContactos] = useState([]);
 
   // Modales
-  const [cobrarPedido, setCobrarPedido] = useState(null); // { pedido, medio_id, monto, comprobante }
+  const [cobrarPedido, setCobrarPedido] = useState(null); // { pedido, medio_id, monto, comprobante_url, subiendo }
   const [nuevoPedido, setNuevoPedido] = useState(null); // { cliente_id, estado, detalles: [], pagos: [] }
   const [saving, setSaving] = useState(false);
 
@@ -41,18 +41,38 @@ export default function PedidosView() {
   // ── Pagos previos del pedido (para evitar doble cobro) ──
   const pagadoTotal = (p) => (p.pagos || []).reduce((s, pg) => s + Number(pg.monto || 0), 0);
 
+  // Sube la imagen del comprobante desde el dispositivo y devuelve su URL.
+  const subirComprobante = async (file) => {
+    const fd = new FormData();
+    fd.append('imagen', file);
+    const resp = await Api.post('/comprobantes', fd);
+    return resp?.url || Api.unwrapOne(resp)?.url || '';
+  };
+
   const abrirCobro = (p) => {
-    setCobrarPedido({ pedido: p, medio_id: medios[0]?.id || '', monto: p.total ?? '', comprobante: '' });
+    setCobrarPedido({ pedido: p, medio_id: medios[0]?.id || '', monto: p.total ?? '', comprobante_url: '', subiendo: false });
+  };
+
+  const onCobroImagen = async (file) => {
+    if (!file) return;
+    setCobrarPedido((c) => ({ ...c, subiendo: true }));
+    try {
+      const url = await subirComprobante(file);
+      setCobrarPedido((c) => ({ ...c, comprobante_url: url, subiendo: false }));
+    } catch (err) {
+      setCobrarPedido((c) => ({ ...c, subiendo: false }));
+      alert('❌ ' + Api.firstError(err));
+    }
   };
 
   const confirmarCobro = async () => {
-    const { pedido, medio_id, monto, comprobante } = cobrarPedido;
+    const { pedido, medio_id, monto, comprobante_url } = cobrarPedido;
     const montoNum = Number(monto);
     const medio = medios.find((m) => m.id == medio_id);
 
     if (!medio_id) return alert('Selecciona un medio de pago');
     if (!(montoNum > 0)) return alert('Monto inválido');
-    if (medio?.es_virtual && !comprobante.trim()) return alert('El medio virtual requiere la URL del comprobante.');
+    if (medio?.es_virtual && !comprobante_url) return alert('El medio virtual requiere la imagen del comprobante.');
 
     setSaving(true);
     try {
@@ -61,7 +81,7 @@ export default function PedidosView() {
 
       if (necesitaPago) {
         const pagoBody = { pedido_id: pedido.id, medio_pago_id: Number(medio_id), monto: montoNum };
-        if (comprobante.trim()) pagoBody.comprobante_url = comprobante.trim();
+        if (comprobante_url) pagoBody.comprobante_url = comprobante_url;
         await Api.post('/pago-pedidos', pagoBody);
       }
       await Api.put('/pedidos/' + pedido.id, { estado: 'pagado' });
@@ -92,22 +112,56 @@ export default function PedidosView() {
 
   // ── Nuevo pedido (mostrador) ──
   const abrirNuevoPedido = async () => {
+    if (!turnoActivo) return alert('Necesitas un turno activo para registrar pedidos.');
+
+    let prods;
     try {
       const [pResp, cResp] = await Promise.all([
         Api.get('/productos', { per_page: 100, activo: 1 }),
         Api.get('/mensajes/contactos'),
       ]);
-      setProductos(Api.unwrapList(pResp).items);
+      prods = Api.unwrapList(pResp).items;
+      setProductos(prods);
       setContactos(cResp || []);
     } catch (err) {
       alert('❌ ' + Api.firstError(err));
       return;
     }
+
+    if (!prods.length) return alert('No hay productos activos disponibles.');
+
     setNuevoPedido({
       cliente_id: '',
       estado: 'pendiente',
-      detalles: [{ producto_id: productos[0]?.id || '', cantidad: 1 }],
+      detalles: [{ producto_id: prods[0].id, cantidad: 1 }],
       pagos: [],
+    });
+  };
+
+  const onPagoImagen = async (idx, file) => {
+    if (!file) return;
+    setNuevoPedido((n) => ({ ...n, pagos: n.pagos.map((x, i) => (i === idx ? { ...x, subiendo: true } : x)) }));
+    try {
+      const url = await subirComprobante(file);
+      setNuevoPedido((n) => ({ ...n, pagos: n.pagos.map((x, i) => (i === idx ? { ...x, comprobante_url: url, subiendo: false } : x)) }));
+    } catch (err) {
+      setNuevoPedido((n) => ({ ...n, pagos: n.pagos.map((x, i) => (i === idx ? { ...x, subiendo: false } : x)) }));
+      alert('❌ ' + Api.firstError(err));
+    }
+  };
+
+  const agregarPago = () => {
+    setNuevoPedido((n) => {
+      const total = n.detalles.reduce((s, d) => {
+        const prod = productos.find((p) => p.id == d.producto_id);
+        return s + (Number(prod?.precio_venta) || 0) * (Number(d.cantidad) || 0);
+      }, 0);
+      const yaPagado = n.pagos.reduce((s, p) => s + (Number(p.monto) || 0), 0);
+      const restante = Math.max(0, total - yaPagado);
+      return {
+        ...n,
+        pagos: [...n.pagos, { medio_pago_id: medios[0]?.id || '', monto: restante > 0 ? String(restante) : '', comprobante_url: '', subiendo: false }],
+      };
     });
   };
 
@@ -126,12 +180,29 @@ export default function PedidosView() {
     const pagos = nuevoPedido.pagos
       .map((p) => {
         const pago = { medio_pago_id: Number(p.medio_pago_id), monto: Number(p.monto) };
-        if (p.comprobante.trim()) pago.comprobante_url = p.comprobante.trim();
+        if (p.comprobante_url) pago.comprobante_url = p.comprobante_url;
         return pago;
       })
       .filter((p) => p.medio_pago_id && p.monto > 0);
 
     const total = detalles.reduce((s, d) => s + (d.subtotal || 0), 0);
+
+    for (const p of pagos) {
+      const medio = medios.find((m) => m.id == p.medio_pago_id);
+      if (medio?.es_virtual && !p.comprobante_url) {
+        return alert(`El medio "${medio.nombre}" requiere la imagen del comprobante.`);
+      }
+    }
+
+    if (nuevoPedido.estado === 'pagado' && !pagos.length) {
+      return alert('Un pedido pagado requiere al menos un pago.');
+    }
+
+    const sumaPagos = pagos.reduce((s, p) => s + p.monto, 0);
+    if (pagos.length && Math.abs(sumaPagos - total) > 0.01) {
+      return alert(`La suma de pagos (${money(sumaPagos)}) no coincide con el total (${money(total)}).`);
+    }
+
     const body = { estado: nuevoPedido.estado, total, detalles, pagos };
     if (nuevoPedido.cliente_id) body.cliente_id = Number(nuevoPedido.cliente_id);
 
@@ -242,6 +313,11 @@ export default function PedidosView() {
   const preparacion = pedidos.filter((p) => p.estado === 'pagado');
   const entregados = pedidos.filter((p) => p.estado === 'entregado' || p.estado === 'cancelado');
 
+  const totalNuevoPedido = (nuevoPedido?.detalles || []).reduce((s, d) => {
+    const prod = productos.find((p) => p.id == d.producto_id);
+    return s + (Number(prod?.precio_venta) || 0) * (Number(d.cantidad) || 0);
+  }, 0);
+
   const renderContenido = (p) => {
     const metodo = (p.pagos || []).map((pg) => pg.medio_pago?.nombre || 'Pago').join(', ') || 'Sin pagar';
     return (
@@ -282,7 +358,7 @@ export default function PedidosView() {
         <span className={`turno-badge ${turnoActivo ? 'activo' : 'cerrado'}`}>
           <i className="fa-solid fa-circle"></i> {turnoActivo ? `ACTIVO · ${turno.turno_info.minutos_restantes} min` : 'SIN TURNO'}
         </span>
-        <button className="btn-primary" onClick={abrirNuevoPedido} style={{ marginLeft: 'auto' }}>
+        <button className="btn-primary" onClick={abrirNuevoPedido} disabled={!turnoActivo} style={{ marginLeft: 'auto' }}>
           <i className="fa-solid fa-plus"></i> Registrar Pedido
         </button>
       </div>
@@ -402,8 +478,14 @@ export default function PedidosView() {
                   <input type="number" min="0.01" step="0.01" value={cobrarPedido.monto} onChange={(e) => setCobrarPedido((c) => ({ ...c, monto: e.target.value }))} />
                 </div>
                 <div className="form-group">
-                  <label>URL Comprobante (medio virtual)</label>
-                  <input type="text" placeholder="https://..." value={cobrarPedido.comprobante} onChange={(e) => setCobrarPedido((c) => ({ ...c, comprobante: e.target.value }))} />
+                  <label>Comprobante (imagen del dispositivo)</label>
+                  <input type="file" accept="image/*" capture="environment" onChange={(e) => onCobroImagen(e.target.files[0])} />
+                  {cobrarPedido.subiendo && <small className="text-muted">Subiendo imagen…</small>}
+                  {cobrarPedido.comprobante_url && (
+                    <div style={{ marginTop: '6px' }}>
+                      <img src={cobrarPedido.comprobante_url} alt="Comprobante" style={{ maxWidth: '160px', borderRadius: '6px' }} />
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -465,15 +547,23 @@ export default function PedidosView() {
                   ))}
                 </select>
                 <input type="number" min="0.01" step="0.01" placeholder="Monto" style={{ flex: 1 }} value={p.monto} onChange={(e) => setNuevoPedido((n) => ({ ...n, pagos: n.pagos.map((x, i) => (i === idx ? { ...x, monto: e.target.value } : x)) }))} />
-                <input type="text" placeholder="URL comprobante (si virtual)" style={{ flex: 1 }} value={p.comprobante} onChange={(e) => setNuevoPedido((n) => ({ ...n, pagos: n.pagos.map((x, i) => (i === idx ? { ...x, comprobante: e.target.value } : x)) }))} />
+                <label className="btn-secondary" style={{ flex: 1, margin: 0, cursor: 'pointer', justifyContent: 'center', textAlign: 'center' }}>
+                  <i className="fa-solid fa-camera"></i> {p.subiendo ? 'Subiendo…' : p.comprobante_url ? 'Comprobante ✓' : 'Comprobante'}
+                  <input type="file" accept="image/*" capture="environment" hidden onChange={(e) => onPagoImagen(idx, e.target.files[0])} />
+                </label>
                 <button type="button" className="btn-icon delete" onClick={() => setNuevoPedido((n) => ({ ...n, pagos: n.pagos.filter((_, i) => i !== idx) }))}>
                   <i className="fa-solid fa-xmark"></i>
                 </button>
               </div>
             ))}
-            <button type="button" className="btn-secondary" style={{ marginTop: '8px' }} onClick={() => setNuevoPedido((n) => ({ ...n, pagos: [...n.pagos, { medio_pago_id: medios[0]?.id || '', monto: '', comprobante: '' }] }))}>
+            <button type="button" className="btn-secondary" style={{ marginTop: '8px' }} onClick={agregarPago}>
               <i className="fa-solid fa-plus"></i> Agregar pago
             </button>
+
+            <div className="form-group" style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ margin: 0 }}><i className="fa-solid fa-calculator"></i> Total del pedido</label>
+              <b style={{ fontSize: '1.15rem' }}>{money(totalNuevoPedido)}</b>
+            </div>
 
             <div className="form-group" style={{ marginTop: '12px' }}>
               <label>Estado inicial</label>
