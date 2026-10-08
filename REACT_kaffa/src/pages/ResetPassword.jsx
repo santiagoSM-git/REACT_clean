@@ -17,8 +17,8 @@ function validarPassword(password) {
 }
 
 /**
- * Página de restablecimiento de contraseña.
- * Llega desde el enlace del correo con ?token=...&correo=... en la URL.
+ * Página de restablecimiento de contraseña por código.
+ * Llega desde "Olvidé mi contraseña" con ?correo=... en la URL.
  */
 function ResetPassword() {
   useStyles(['style.css', 'auth.css']);
@@ -26,9 +26,9 @@ function ResetPassword() {
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token') || '';
   const correo = searchParams.get('correo') || '';
 
+  const [codigo, setCodigo] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmar, setShowConfirmar] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -40,10 +40,12 @@ function ResetPassword() {
   } = useForm({ mode: 'onBlur' });
 
   const onSubmit = async (data) => {
+    if (!/^\d{6}$/.test(codigo)) return toastError('El código debe tener 6 dígitos.');
+
     setLoading(true);
     const result = await Auth.resetPassword({
       correo,
-      token,
+      codigo,
       password: data.password,
       password_confirmation: data.confirmar,
     });
@@ -57,19 +59,18 @@ function ResetPassword() {
     }
   };
 
-  // Si el enlace está incompleto (sin token o correo) no se puede continuar.
-  if (!token || !correo) {
+  // Sin correo no se puede continuar: hay que solicitarlo de nuevo.
+  if (!correo) {
     return (
       <div className="container">
         <div className="login-box">
           <img className="imagen" src="/imagenes/logo_kaffa.jpg" alt="KAFFA logo" />
-          <h2>Enlace inválido</h2>
+          <h2>Falta el correo</h2>
           <p className="text-muted" style={{ textAlign: 'center', margin: '1rem 0' }}>
-            Este enlace de restablecimiento es inválido o está incompleto.
-            Solicita uno nuevo.
+            No sabemos a qué correo enviar el código. Solicítalo de nuevo.
           </p>
           <p className="registro">
-            <Link to="/forgot-password">Solicitar nuevo enlace</Link>
+            <Link to="/forgot-password">Solicitar código</Link>
           </p>
         </div>
       </div>
@@ -82,7 +83,27 @@ function ResetPassword() {
         <img className="imagen" src="/imagenes/logo_kaffa.jpg" alt="KAFFA logo" />
         <h2>Nueva contraseña</h2>
 
+        <p className="text-muted" style={{ textAlign: 'center', marginBottom: '1rem' }}>
+          Ingresa el <b>código de 6 dígitos</b> que enviamos a <b>{correo}</b> y tu nueva contraseña.
+        </p>
+
         <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="input-group">
+            <label htmlFor="codigo">Código de verificación</label>
+            <input
+              type="text"
+              id="codigo"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              placeholder="000000"
+              value={codigo}
+              autoFocus
+              onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              style={{ letterSpacing: '6px', textAlign: 'center', fontSize: '1.3rem', fontWeight: 600 }}
+            />
+          </div>
+
           <div className="input-group">
             <label htmlFor="password">Nueva contraseña</label>
             <div className="password-wrapper">
@@ -126,13 +147,13 @@ function ResetPassword() {
             {errors.confirmar && <span className="auth-error">{errors.confirmar.message}</span>}
           </div>
 
-          <button type="submit" className="btn" disabled={loading}>
+          <button type="submit" className="btn" disabled={loading || codigo.length !== 6}>
             {loading ? 'Guardando…' : 'Restablecer contraseña'}
           </button>
         </form>
 
         <p className="registro">
-          <Link to="/login">Volver a iniciar sesión</Link>
+          ¿No recibiste el código? <Link to="/forgot-password">Solicitar otro</Link>
         </p>
       </div>
     </div>

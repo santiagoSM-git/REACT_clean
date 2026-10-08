@@ -2,6 +2,12 @@
 /**
  * KAFFA Admin - Helpers compartidos de vistas
  */
+import { Api } from '../../lib/api';
+import { TURNOS_LABEL } from '../../lib/turnos';
+
+export { turnoLabel, turnoCorto } from '../../lib/turnos';
+
+export const TIPOS_TURNO = TURNOS_LABEL;
 
 export const ESTADOS = {
   pendiente: { label: 'Pendiente', cls: 'badge-warning' },
@@ -9,8 +15,6 @@ export const ESTADOS = {
   cancelado: { label: 'Cancelado', cls: 'badge-danger' },
   entregado: { label: 'Entregado', cls: 'badge-success' },
 };
-
-export const TIPOS_TURNO = { mañana: 'Mañana (07:00 - 13:00)', tarde: 'Tarde (13:00 - 18:00)' };
 
 export function money(v) {
   const n = Number(v) || 0;
@@ -56,5 +60,55 @@ export function EmptyRow({ cols, text = 'Sin registros' }) {
         <p className="text-muted" style={{ textAlign: 'center', padding: '20px' }}>{text}</p>
       </td>
     </tr>
+  );
+}
+
+/**
+ * Sube la imagen del comprobante desde el dispositivo (PC/móvil) y devuelve
+ * la URL pública que el backend persiste en `comprobante_url`.
+ */
+export async function subirComprobante(file) {
+  const fd = new FormData();
+  fd.append('imagen', file);
+  const resp = await Api.post('/comprobantes', fd);
+  return resp?.url || Api.unwrapOne(resp)?.url || '';
+}
+
+/** Sube la imagen de un evento y devuelve la URL pública a persistir. */
+export async function subirImagenEvento(file) {
+  const fd = new FormData();
+  fd.append('imagen', file);
+  const resp = await Api.post('/eventos/imagen', fd);
+  return resp?.url || Api.unwrapOne(resp)?.url || '';
+}
+
+/** Botón para subir la imagen del comprobante con su vista previa. */
+export function ComprobanteUpload({ url, subiendo = false, onFile, label = 'Comprobante' }) {
+  return (
+    <>
+      <label
+        className="btn-secondary comprobante-upload"
+        style={{ margin: 0, cursor: subiendo ? 'progress' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px' }}
+      >
+        <i className="fa-solid fa-upload"></i>
+        {subiendo ? 'Subiendo…' : url ? 'Comprobante ✓' : label}
+        <input
+          type="file"
+          accept="image/*"
+          hidden
+          disabled={subiendo}
+          onChange={(e) => {
+            const f = e.target.files && e.target.files[0];
+            if (f) onFile(f);
+            e.target.value = '';
+          }}
+        />
+      </label>
+      {url && (
+        <a href={url} target="_blank" rel="noreferrer" title="Ver comprobante" style={{ marginLeft: '6px' }}>
+          <i className="fa-solid fa-image"></i>
+        </a>
+      )}
+    </>
   );
 }

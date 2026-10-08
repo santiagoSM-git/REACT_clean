@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Api } from '../../lib/api';
 import CrudModal from './CrudModal';
-import { EmptyRow, fechaStr, money } from './helpers';
+import { EmptyRow, fechaStr, money, turnoCorto } from './helpers';
 
 function turnoTexto(caja) {
   if (!caja?.turno) return '—';
-  return `${caja.turno.tipo === 'mañana' ? 'Mañana' : 'Tarde'} (${caja.turno.fecha})`;
+  return `${turnoCorto(caja.turno.tipo)} (${caja.turno.fecha})`;
 }
 
 export default function CajasView() {

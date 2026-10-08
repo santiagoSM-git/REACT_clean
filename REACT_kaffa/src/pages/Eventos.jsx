@@ -1,28 +1,109 @@
+import { useRef, useState } from 'react';
 import { useStyles } from '../hooks/useStyles';
 import { useBodyClass } from '../hooks/useBodyClass';
+import { useEventos } from '../hooks/useEventos';
 
-const EVENTOS = [
-  {
-    fecha: '📅 18 septiembre 2024',
-    titulo: 'SENA en la Feria Internacional de Café, Cacao y Agroturismo',
-    descripcion:
-      'El evento mostró lo mejor de la caficultura y cacaocultura regional, con participación de aprendices e instructores de las regionales Huila, Antioquia, Caldas, Cauca y Quindío.',
-    imagen:
-      'https://www.sena.edu.co/es-co/Noticias/PublishingImages/Neiva1-18924.jpeg',
-  },
-  {
-    fecha: '📅 18 agosto 2024',
-    titulo: '13.ª Feria y Concurso de Cafés Especiales — Cauca',
-    descripcion:
-      'Gracias a la alianza entre Tecnicafe, Comité de Cafeteros Cauca y Mercy Corps Colombia, el SENA participa con instructores como jueces y aprendices competidores en Arte Latte, AeroPress y April Brewers Cup.',
-    imagen:
-      'https://scontent.fclo9-1.fna.fbcdn.net/v/t39.30808-6/486831955_1089983839837796_974248402690324158_n.jpg?stp=dst-jpg_s590x590_tt6&_nc_cat=103&ccb=1-7&_nc_sid=127cfc&_nc_ohc=4R_6S1E_2EQQ7kNvwHngXKF&_nc_oc=Adkryi-Lw3-K_DHDfttBcq5uObtzh1CqFs76yzBh00CaCB_hirwVR0k6o7i8M2Gfoc8&_nc_zt=23&_nc_ht=scontent.fclo9-1.fna&_nc_gid=RLBCsDOxjYZNdAB_XOFkFA&oh=00_AfjOy_0gjIKznv2EFkI_b60igs7F8hwvrzRU-6Q5b2tnZA&oe=6911EDC5',
-  },
-];
+/** 'YYYY-MM-DD' (+ hora opcional) → fecha legible en español. */
+function fechaEvento(evento) {
+  if (!evento?.fecha) return '';
+  const [anio, mes, dia] = String(evento.fecha).slice(0, 10).split('-').map(Number);
+  const fecha = new Date(anio, mes - 1, dia);
+  if (Number.isNaN(fecha.getTime())) return String(evento.fecha);
+
+  const texto = fecha.toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+  const hora = evento.hora ? String(evento.hora).slice(0, 5) : '';
+  return hora ? `${texto} · ${hora}` : texto;
+}
+
+/**
+ * Galería tipo publicación: scroll horizontal con snap (swipe táctil nativo)
+ * + flechas en escritorio + puntos indicadores.
+ */
+function EventMedia({ imagenes, titulo }) {
+  const trackRef = useRef(null);
+  const [idx, setIdx] = useState(0);
+  const total = imagenes.length;
+
+  const ir = (n) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const destino = Math.max(0, Math.min(total - 1, n));
+    track.scrollTo({ left: destino * track.clientWidth, behavior: 'smooth' });
+    setIdx(destino);
+  };
+
+  const onScroll = () => {
+    const track = trackRef.current;
+    if (!track || !track.clientWidth) return;
+    const actual = Math.round(track.scrollLeft / track.clientWidth);
+    setIdx((prev) => (actual !== prev ? actual : prev));
+  };
+
+  if (!total) {
+    return (
+      <div className="event-media event-media-empty" aria-hidden="true">
+        <i className="fa-solid fa-calendar-days"></i>
+      </div>
+    );
+  }
+
+  return (
+    <div className="event-media">
+      <div className="event-media-track" ref={trackRef} onScroll={onScroll}>
+        {imagenes.map((url, i) => (
+          <div className="event-media-slide" key={`${url}-${i}`}>
+            <img src={url} alt={`${titulo} — imagen ${i + 1}`} loading="lazy" />
+          </div>
+        ))}
+      </div>
+
+      {total > 1 && (
+        <>
+          <button
+            type="button"
+            className="event-media-nav prev"
+            onClick={() => ir(idx - 1)}
+            disabled={idx === 0}
+            aria-label="Imagen anterior"
+          >
+            <i className="fa-solid fa-chevron-left"></i>
+          </button>
+          <button
+            type="button"
+            className="event-media-nav next"
+            onClick={() => ir(idx + 1)}
+            disabled={idx === total - 1}
+            aria-label="Imagen siguiente"
+          >
+            <i className="fa-solid fa-chevron-right"></i>
+          </button>
+
+          <div className="event-media-dots">
+            {imagenes.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                className={`event-media-dot${i === idx ? ' active' : ''}`}
+                onClick={() => ir(i)}
+                aria-label={`Ir a la imagen ${i + 1}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function Eventos() {
   useStyles(['style.css']);
   useBodyClass('eventos-page');
+
+  const { eventos, cargando, error, reintentar } = useEventos();
 
   return (
     <section className="featured eventos-section" style={{ paddingTop: '120px' }}>
@@ -32,21 +113,37 @@ function Eventos() {
         <p>Participamos en las ferias y concursos de café más importantes de Colombia.</p>
       </div>
 
-      <div className="eventos-grid">
-        {EVENTOS.map((evento) => (
-          <article className="event-card" key={evento.titulo}>
-            <img className="event-card-image" src={evento.imagen} alt={evento.titulo} loading="lazy" />
-            <div className="event-card-body">
-              <span className="event-date">{evento.fecha}</span>
-              <h3>{evento.titulo}</h3>
-              <p>{evento.descripcion}</p>
-              <a href="#" className="btn-primary">
-                Más información
-              </a>
-            </div>
-          </article>
-        ))}
-      </div>
+      {cargando ? (
+        <p className="team-status">Cargando eventos…</p>
+      ) : error ? (
+        <div className="team-status team-error">
+          <p>⚠️ {error}</p>
+          <button type="button" onClick={reintentar}>Reintentar</button>
+        </div>
+      ) : eventos.length === 0 ? (
+        <p className="team-status">Pronto anunciaremos nuestros próximos eventos.</p>
+      ) : (
+        <div className="eventos-grid">
+          {eventos.map((evento) => (
+            <article className="event-card" key={evento.id}>
+              <EventMedia
+                imagenes={(evento.imagenes || []).map((im) => im.url)}
+                titulo={evento.titulo}
+              />
+              <div className="event-card-body">
+                <span className="event-date">{fechaEvento(evento)}</span>
+                <h3>{evento.titulo}</h3>
+                {evento.lugar && (
+                  <p className="event-lugar">
+                    <i className="fa-solid fa-location-dot"></i> {evento.lugar}
+                  </p>
+                )}
+                <p>{evento.descripcion}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

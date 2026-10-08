@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Auth } from '../../lib/auth';
 import { Api } from '../../lib/api';
-import { fechaHora, money } from './helpers';
+import { fechaHora, money, turnoCorto } from './helpers';
 
 export default function CajaView() {
   const [caja, setCaja] = useState(null); // caja abierta (con movimientos + relaciones)
@@ -76,7 +76,7 @@ export default function CajaView() {
       const sistema = Number(cerrada.monto_cierre_sistema) || 0;
       const diff = ef + dig - sistema;
       const turnoCerrada = cerrada.turno
-        ? `${cerrada.turno.tipo === 'mañana' ? 'Mañana' : 'Tarde'} (${cerrada.turno.fecha})`
+        ? `${turnoCorto(cerrada.turno.tipo)} (${cerrada.turno.fecha})`
         : '—';
       setReporteCaja({
         cerrada,
@@ -116,7 +116,7 @@ export default function CajaView() {
   const egresos = (caja?.movimientos || []).filter((m) => m.tipo === 'egreso').reduce((s, m) => s + Number(m.monto || 0), 0);
 
   const turnoTexto = caja?.turno
-    ? `${caja.turno.tipo === 'mañana' ? 'Mañana' : 'Tarde'} (${caja.turno.fecha})`
+    ? `${turnoCorto(caja.turno.tipo)} (${caja.turno.fecha})`
     : '—';
 
   return (

@@ -150,7 +150,7 @@ export const Api = {
   turnoMessage(err) {
     switch (err.code) {
       case 'FUERA_HORARIO':
-        return 'Fuera del horario laboral (07:00 - 18:00).';
+        return 'Fuera del horario laboral (mañana 07:00-13:00, tarde 13:00-18:00, abierto 05:00-22:00).';
       case 'TURNO_INACTIVO':
         return 'No tienes un turno activo en este horario. Contacta al administrador.';
       case 'TURNO_EXPIRADO':

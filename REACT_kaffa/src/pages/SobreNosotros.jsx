@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStyles } from '../hooks/useStyles';
 import { useEquipo } from '../hooks/useEquipo';
+import { TURNOS } from '../lib/turnos';
 
 const VALORES = [
   {
@@ -39,20 +40,19 @@ const GALERIA = [
   },
 ];
 
-// Turnos del negocio (valores que entiende el backend: tabla `turnos.tipo`).
-const TURNOS = [
-  { valor: 'mañana', etiqueta: 'Mañana' },
-  { valor: 'tarde', etiqueta: 'Tarde' },
-];
-
 /** Fecha de hoy en formato YYYY-MM-DD usando la hora local (sin desfase UTC). */
 function hoyLocal() {
   return new Date().toLocaleDateString('en-CA');
 }
 
-/** Turno actual según el horario del negocio (mañana 07-13, tarde 13-18). */
+/**
+ * Turno actual según el horario del negocio: abierto 05–22 (prioridad en
+ * los extremos), mañana 07–13 y tarde 13–18.
+ */
 function turnoActual() {
-  return new Date().getHours() < 13 ? 'mañana' : 'tarde';
+  const h = new Date().getHours();
+  if (h < 7 || h >= 18) return 'abierto';
+  return h < 13 ? 'mañana' : 'tarde';
 }
 
 /** 'YYYY-MM-DD' → 'DD/MM/YYYY' en hora local (sin desfase de zona horaria). */

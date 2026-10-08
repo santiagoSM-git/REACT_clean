@@ -80,7 +80,7 @@ export default function TurnosView() {
     <div className="page show">
       <div className="box">
         <div className="box-top">
-          <h3><i className="fa-solid fa-clock"></i> Turnos (mañana 07–13 / tarde 13–18)</h3>
+          <h3><i className="fa-solid fa-clock"></i> Turnos (mañana 07–13 / tarde 13–18 / abierto 05–22)</h3>
           <button className="btn-primary" onClick={() => abrirModal(null)}><i className="fa-solid fa-plus"></i> Nuevo Turno</button>
         </div>
         <div className="tbl-wrap" style={{ marginTop: '16px' }}>
@@ -118,8 +118,9 @@ export default function TurnosView() {
           <div className="form-group">
             <label>Tipo</label>
             <select value={modal.tipo} onChange={(e) => setModal((m) => ({ ...m, tipo: e.target.value }))}>
-              <option value="mañana">Mañana (07:00 - 13:00)</option>
-              <option value="tarde">Tarde (13:00 - 18:00)</option>
+              {Object.entries(TIPOS_TURNO).map(([valor, label]) => (
+                <option key={valor} value={valor}>{label}</option>
+              ))}
             </select>
           </div>
           <div className="form-group">

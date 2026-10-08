@@ -1,5 +1,7 @@
 const PDF_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
 
+export { turnoLabel, turnoCorto } from '../../lib/turnos';
+
 export function formatearPrecioMenu(valor) {
   const n = typeof valor === 'number' ? valor : parseFloat(String(valor).replace(/[^\d.-]/g, ''));
   return `$${(Number.isNaN(n) ? 0 : n).toLocaleString('es-CO')}`;

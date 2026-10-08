@@ -18,7 +18,9 @@ import FacturasView from './FacturasView';
 import ClientesView from './ClientesView';
 import BaristasView from './BaristasView';
 import TurnosView from './TurnosView';
+import EventosView from './EventosView';
 import ReportesView from './ReportesView';
+import AsistenteView from './AsistenteView';
 import ConfigView from './ConfigView';
 
 const NAV = [
@@ -36,7 +38,9 @@ const NAV = [
   { id: 'clientes', icon: 'fa-user', label: 'Clientes' },
   { id: 'baristas', icon: 'fa-users', label: 'Baristas' },
   { id: 'turnos', icon: 'fa-clock', label: 'Turnos' },
+  { id: 'eventos', icon: 'fa-calendar-days', label: 'Eventos' },
   { id: 'reportes', icon: 'fa-flag', label: 'Reportes' },
+  { id: 'asistente', icon: 'fa-robot', label: 'Asistente IA' },
   { id: 'config', icon: 'fa-gear', label: 'Configuración' },
 ];
 
@@ -55,7 +59,9 @@ const VIEWS = {
   clientes: ClientesView,
   baristas: BaristasView,
   turnos: TurnosView,
+  eventos: EventosView,
   reportes: ReportesView,
+  asistente: AsistenteView,
   config: ConfigView,
 };
 

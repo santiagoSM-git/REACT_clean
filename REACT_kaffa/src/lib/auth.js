@@ -125,9 +125,9 @@ export const Auth = {
     notifyAuthChange();
   },
 
-  // ── Recuperación de contraseña y verificación de correo ──
+  // ── Recuperación de contraseña y verificación de correo (por código) ──
 
-  /** POST /forgot-password: solicita el enlace de restablecimiento. */
+  /** POST /forgot-password: solicita el código de restablecimiento. */
   async forgotPassword(correo) {
     try {
       const resp = await Api.post('/forgot-password', { correo });
@@ -137,7 +137,7 @@ export const Auth = {
     }
   },
 
-  /** POST /reset-password: guarda la nueva contraseña con el token del correo. */
+  /** POST /reset-password: guarda la nueva contraseña con el código del correo. */
   async resetPassword(data) {
     try {
       const resp = await Api.post('/reset-password', data);
@@ -147,7 +147,17 @@ export const Auth = {
     }
   },
 
-  /** POST /email/verification-notification: reenvía el correo de verificación. */
+  /** POST /email/verify-code: verifica la cuenta con el código recibido. */
+  async verifyCode(correo, codigo) {
+    try {
+      const resp = await Api.post('/email/verify-code', { correo, codigo });
+      return { success: true, message: resp.message };
+    } catch (err) {
+      return { success: false, message: Api.firstError(err) };
+    }
+  },
+
+  /** POST /email/verification-notification: reenvía el código de verificación. */
   async resendVerification(correo) {
     try {
       const resp = await Api.post('/email/verification-notification', { correo });
