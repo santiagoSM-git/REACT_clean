@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Api } from '../../lib/api';
 import CrudModal from './CrudModal';
+import ImageUpload from '../../components/media/ImageUpload';
 import { EmptyRow, badgeActivo, fechaStr } from './helpers';
 
 export default function BaristasView() {
@@ -119,8 +120,14 @@ export default function BaristasView() {
             <input type="email" value={modal.correo} onChange={(e) => setModal((m) => ({ ...m, correo: e.target.value }))} />
           </div>
           <div className="form-group">
-            <label>URL de foto (opcional)</label>
-            <input type="url" value={modal.foto} placeholder="https://res.cloudinary.com/…" onChange={(e) => setModal((m) => ({ ...m, foto: e.target.value }))} />
+            <label>Foto de perfil (opcional)</label>
+            <ImageUpload
+              value={modal.foto}
+              onChange={(url) => setModal((m) => ({ ...m, foto: url || '' }))}
+              label="Subir foto…"
+              rounded
+              previewSize={56}
+            />
           </div>
           <div className="form-group">
             <label>{modal.id ? 'Nueva Contraseña (opcional)' : 'Contraseña'}</label>

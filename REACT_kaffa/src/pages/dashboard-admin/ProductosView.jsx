@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Api } from '../../lib/api';
 import CrudModal from './CrudModal';
+import ImageUpload from '../../components/media/ImageUpload';
+import CloudinaryImage from '../../components/media/CloudinaryImage';
 import { EmptyRow, badgeActivo, money } from './helpers';
 
 export default function ProductosView() {
@@ -9,7 +11,6 @@ export default function ProductosView() {
   const [cargando, setCargando] = useState(true);
   const [modal, setModal] = useState(null); // { id?, nombre, descripcion, imagen, precio_venta, categoria_id, activo }
   const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef(null);
 
   const cargar = async () => {
     try {
@@ -102,7 +103,7 @@ export default function ProductosView() {
                   <tr key={p.id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {p.imagen && <img src={p.imagen} alt="" style={{ width: '34px', height: '34px', borderRadius: '6px', objectFit: 'cover' }} onError={(e) => (e.target.style.display = 'none')} />}
+                        <CloudinaryImage src={p.imagen} alt="" w={68} h={68} style={{ width: '34px', height: '34px', borderRadius: '6px', objectFit: 'cover' }} />
                         <b>{p.nombre}</b>
                       </div>
                     </td>
@@ -133,33 +134,11 @@ export default function ProductosView() {
           </div>
           <div className="form-group">
             <label>Imagen</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button type="button" className="btn-secondary" onClick={() => fileInputRef.current?.click()}>
-                <i className="fa-solid fa-image"></i> Seleccionar imagen…
-              </button>
-              {modal.imagen && (
-                <>
-                  <img src={modal.imagen} alt="" style={{ width: '54px', height: '54px', borderRadius: '8px', objectFit: 'cover' }} />
-                  <button type="button" className="btn-icon delete" onClick={() => setModal((m) => ({ ...m, imagen: '' }))}>
-                    <i className="fa-solid fa-trash-can"></i>
-                  </button>
-                </>
-              )}
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept="image/*"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = '';
-                  if (!file) return;
-                  const r = new FileReader();
-                  r.onload = (ev) => setModal((m) => ({ ...m, imagen: ev.target.result }));
-                  r.readAsDataURL(file);
-                }}
-              />
-            </div>
+            <ImageUpload
+              value={modal.imagen}
+              onChange={(url) => setModal((m) => ({ ...m, imagen: url || '' }))}
+              label="Subir a Cloudinary…"
+            />
           </div>
           <div className="form-row">
             <div className="form-group">

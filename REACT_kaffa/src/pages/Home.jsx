@@ -4,6 +4,7 @@ import { useBodyClass } from '../hooks/useBodyClass';
 import { ProductosStore } from '../lib/productos-store';
 import { useCatalogo } from '../hooks/useCatalogo';
 import ProductCard from '../components/product/ProductCard';
+import CloudinaryImage from '../components/media/CloudinaryImage';
 
 function Home() {
   useStyles(['style.css']);
@@ -46,10 +47,11 @@ function Home() {
             </div>
           </div>
           <div className="hero-visual">
-            <img
+            <CloudinaryImage
               className="hero-image"
               src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop"
               alt="Taza de café artesanal"
+              w={800}
             />
             <div className="hero-badge">
               <div className="hero-badge-icon">☕</div>
@@ -79,10 +81,11 @@ function Home() {
       {/* SOBRE NOSOTROS */}
       <section className="about-preview">
         <div className="about-preview-inner">
-          <img
+          <CloudinaryImage
             className="about-preview-image"
             src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800&auto=format&fit=crop"
             alt="Cafetería KAFFA"
+            w={800}
           />
           <div className="about-preview-content">
             <span className="section-tag">Nuestra historia</span>

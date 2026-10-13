@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../lib/utils';
 import { Auth } from '../../lib/auth';
 import { useCarrito } from '../../context/CarritoContext';
+import CloudinaryImage from '../media/CloudinaryImage';
 
 function ProductCard({ producto }) {
   const carrito = useCarrito();
@@ -23,11 +24,12 @@ function ProductCard({ producto }) {
 
   return (
     <div className="product-card">
-      <img
+      <CloudinaryImage
         className="product-card-image"
         src={producto.imagen}
         alt={producto.nombre}
-        loading="lazy"
+        w={600}
+        h={400}
       />
       <div className="product-card-body">
         <h3>{producto.nombre}</h3>

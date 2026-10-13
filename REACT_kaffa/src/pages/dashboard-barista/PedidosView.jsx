@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Api } from '../../lib/api';
+import { uploadImage } from '../../lib/cloudinary';
+import CloudinaryImage from '../../components/media/CloudinaryImage';
 import { useBarista } from './BaristaContext.jsx';
 import { fechaHora, getJsPDF, itemsPedido, money } from './helpers';
 
@@ -41,12 +43,10 @@ export default function PedidosView() {
   // ── Pagos previos del pedido (para evitar doble cobro) ──
   const pagadoTotal = (p) => (p.pagos || []).reduce((s, pg) => s + Number(pg.monto || 0), 0);
 
-  // Sube la imagen del comprobante desde el dispositivo y devuelve su URL.
+  // Sube la imagen del comprobante a Cloudinary y devuelve su URL.
   const subirComprobante = async (file) => {
-    const fd = new FormData();
-    fd.append('imagen', file);
-    const resp = await Api.post('/comprobantes', fd);
-    return resp?.url || Api.unwrapOne(resp)?.url || '';
+    const res = await uploadImage(file);
+    return res?.url || '';
   };
 
   const abrirCobro = (p) => {
@@ -483,7 +483,7 @@ export default function PedidosView() {
                   {cobrarPedido.subiendo && <small className="text-muted">Subiendo imagen…</small>}
                   {cobrarPedido.comprobante_url && (
                     <div style={{ marginTop: '6px' }}>
-                      <img src={cobrarPedido.comprobante_url} alt="Comprobante" style={{ maxWidth: '160px', borderRadius: '6px' }} />
+                      <CloudinaryImage src={cobrarPedido.comprobante_url} alt="Comprobante" w={320} style={{ maxWidth: '160px', borderRadius: '6px' }} />
                     </div>
                   )}
                 </div>

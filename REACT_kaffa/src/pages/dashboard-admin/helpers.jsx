@@ -2,7 +2,7 @@
 /**
  * KAFFA Admin - Helpers compartidos de vistas
  */
-import { Api } from '../../lib/api';
+import { uploadImage } from '../../lib/cloudinary';
 import { TURNOS_LABEL } from '../../lib/turnos';
 
 export { turnoLabel, turnoCorto } from '../../lib/turnos';
@@ -64,22 +64,19 @@ export function EmptyRow({ cols, text = 'Sin registros' }) {
 }
 
 /**
- * Sube la imagen del comprobante desde el dispositivo (PC/móvil) y devuelve
- * la URL pública que el backend persiste en `comprobante_url`.
+ * Sube la imagen del comprobante desde el dispositivo (PC/móvil) a Cloudinary
+ * y devuelve la URL pública (secure_url) que el backend persiste en
+ * `comprobante_url`.
  */
 export async function subirComprobante(file) {
-  const fd = new FormData();
-  fd.append('imagen', file);
-  const resp = await Api.post('/comprobantes', fd);
-  return resp?.url || Api.unwrapOne(resp)?.url || '';
+  const res = await uploadImage(file);
+  return res?.url || '';
 }
 
-/** Sube la imagen de un evento y devuelve la URL pública a persistir. */
+/** Sube la imagen de un evento a Cloudinary y devuelve la URL pública a persistir. */
 export async function subirImagenEvento(file) {
-  const fd = new FormData();
-  fd.append('imagen', file);
-  const resp = await Api.post('/eventos/imagen', fd);
-  return resp?.url || Api.unwrapOne(resp)?.url || '';
+  const res = await uploadImage(file);
+  return res?.url || '';
 }
 
 /** Botón para subir la imagen del comprobante con su vista previa. */

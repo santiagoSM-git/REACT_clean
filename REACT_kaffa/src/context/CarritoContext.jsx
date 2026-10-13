@@ -152,6 +152,8 @@ export function CarritoProvider({ children }) {
     const u = Auth.getCurrentUser() || {};
     const body = { nombre: (name || '').trim(), correo: (email || '').trim() };
     if (password) body.password = password;
+    // Foto de perfil: URL de Cloudinary o null para quitarla.
+    if (avatar !== undefined) body.foto = avatar || null;
     if (!body.nombre || !body.correo) {
       alert('Nombre y correo requeridos');
       return false;
@@ -159,7 +161,7 @@ export function CarritoProvider({ children }) {
 
     try {
       const actualizado = await Api.put('/perfil', body);
-      const next = { ...u, ...actualizado, avatar: avatar || u.avatar };
+      const next = { ...u, ...actualizado, avatar: actualizado?.foto ?? avatar ?? u.avatar };
       Api.setUser(next);
       window.dispatchEvent(new Event('kaffa-auth-change'));
       setShowProfileModal(false);

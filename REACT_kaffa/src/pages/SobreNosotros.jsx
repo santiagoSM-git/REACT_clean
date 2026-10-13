@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStyles } from '../hooks/useStyles';
 import { useEquipo } from '../hooks/useEquipo';
+import CloudinaryImage from '../components/media/CloudinaryImage';
 import { TURNOS } from '../lib/turnos';
 
 const VALORES = [
@@ -69,7 +70,7 @@ function TeamCard({ foto, nombre, rol, meta }) {
   return (
     <div className="team-card">
       {foto ? (
-        <img src={foto} alt={nombre} loading="lazy" />
+        <CloudinaryImage src={foto} alt={nombre} w={400} h={400} />
       ) : (
         <div className="team-card-fallback" aria-hidden="true">
           {(nombre || '?').charAt(0).toUpperCase()}
@@ -178,11 +179,11 @@ function SobreNosotros() {
 
       <section className="about-story">
         <div className="about-story-inner">
-          <img
+          <CloudinaryImage
             className="about-story-image"
             src="https://images.unsplash.com/photo-1554118811-1e0d58224f24?q=80&w=800&auto=format&fit=crop"
             alt="Cafetería KAFFA"
-            loading="lazy"
+            w={800}
           />
           <div className="about-story-text">
             <h2>Nuestra Historia</h2>
@@ -222,7 +223,7 @@ function SobreNosotros() {
         <div className="gallery-grid">
           {GALERIA.map((img) => (
             <div className="gallery-item" key={img.src}>
-              <img src={img.src} alt={img.alt} loading="lazy" />
+              <CloudinaryImage src={img.src} alt={img.alt} w={600} h={450} />
             </div>
           ))}
         </div>

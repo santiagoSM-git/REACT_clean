@@ -3,7 +3,9 @@
  * Modales trasladados 1:1 del antiguo DashboardCliente:
  * detalle de producto, carrito, pago y perfil.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
+import ImageUpload from '../media/ImageUpload';
+import CloudinaryImage from '../media/CloudinaryImage';
 import { useStyles } from '../../hooks/useStyles';
 import { useCarrito } from '../../context/CarritoContext';
 import { Auth } from '../../lib/auth';
@@ -31,10 +33,12 @@ function ProductDetailModal() {
     <div className="modal-overlay open" style={{ display: 'flex' }} onClick={cerrarDetalle}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={cerrarDetalle}>&times;</button>
-        <img
+        <CloudinaryImage
           src={currentProduct.imagen || IMG_DEFAULT}
           style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }}
           alt={currentProduct.nombre}
+          w={600}
+          h={300}
         />
         <h2>{currentProduct.nombre}</h2>
         <p style={{ color: 'var(--primary, #39A900)', fontWeight: '700', fontSize: '1.2rem' }}>
@@ -160,9 +164,14 @@ function PaymentModal() {
               </select>
             </div>
             <div className="form-group">
-              <label>URL del Comprobante (obligatorio para medios virtuales)</label>
-              <input type="text" placeholder="https://... (link de la captura)" value={comprobanteUrl} onChange={(e) => setPagoField('comprobante', e.target.value)} />
-              <small className="text-muted">Ej: enlace público de la captura del pago. El barista la verificará.</small>
+              <label>Comprobante (obligatorio para medios virtuales)</label>
+              <ImageUpload
+                value={comprobanteUrl}
+                onChange={(url) => setPagoField('comprobante', url || '')}
+                label="Subir comprobante…"
+                previewSize={80}
+              />
+              <small className="text-muted">Sube una captura del pago. El barista la verificará.</small>
             </div>
           </>
         )}
@@ -179,12 +188,11 @@ function ProfileModal() {
   const { showProfileModal, cerrarPerfil, saveProfile } = useCarrito();
   const [profile, setProfile] = useState({ name: '', email: '', password: '', avatar: null });
   const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (showProfileModal) {
       const u = Auth.getCurrentUser() || {};
-      setProfile({ name: u.nombre || '', email: u.correo || '', password: '', avatar: u.avatar || null });
+      setProfile({ name: u.nombre || '', email: u.correo || '', password: '', avatar: u.foto || u.avatar || null });
     }
   }, [showProfileModal]);
 
@@ -193,6 +201,7 @@ function ProfileModal() {
   const user = Auth.getCurrentUser() || {};
   const avatarSrc =
     profile.avatar ||
+    user.foto ||
     user.avatar ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nombre || 'C')}&background=293f2c&color=fff`;
 
@@ -208,24 +217,15 @@ function ProfileModal() {
         <button className="modal-close" onClick={cerrarPerfil}>&times;</button>
         <h2><i className="fa-solid fa-user-gear"></i> Mi Perfil</h2>
         <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-          <img src={avatarSrc} className="profile-modal-avatar" alt="Perfil" />
-          <br />
-          <button className="btn-secondary" onClick={() => fileInputRef.current?.click()} style={{ marginTop: '6px' }}>
-            <i className="fa-solid fa-camera"></i> Cambiar Foto
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept="image/*"
-            hidden
-            onChange={(e) => {
-              if (e.target.files[0]) {
-                const r = new FileReader();
-                r.onload = (ev) => setProfile((p) => ({ ...p, avatar: ev.target.result }));
-                r.readAsDataURL(e.target.files[0]);
-              }
-            }}
-          />
+          <CloudinaryImage src={avatarSrc} className="profile-modal-avatar" alt="Perfil" w={200} h={200} />
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px' }}>
+            <ImageUpload
+              value=""
+              onChange={(url) => setProfile((p) => ({ ...p, avatar: url || null }))}
+              label="Cambiar Foto"
+              showPreview={false}
+            />
+          </div>
         </div>
         <div className="form-group">
           <label>Nombre Completo</label>

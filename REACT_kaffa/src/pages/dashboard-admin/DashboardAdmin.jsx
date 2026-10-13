@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStyles } from '../../hooks/useStyles';
 import { useDashboardTheme } from '../../hooks/useDashboardTheme';
 import { Auth } from '../../lib/auth';
 import { Api } from '../../lib/api';
+import ImageUpload from '../../components/media/ImageUpload';
+import CloudinaryImage from '../../components/media/CloudinaryImage';
 import InicioView from './InicioView';
 import PedidosView from './PedidosView';
 import ProductosView from './ProductosView';
@@ -77,7 +79,6 @@ function DashboardAdmin() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState({ name: '', email: '', password: '', avatar: null });
   const [savingProfile, setSavingProfile] = useState(false);
-  const profileFileInputRef = useRef(null);
 
   useEffect(() => {
     const onClick = (e) => {
@@ -89,7 +90,7 @@ function DashboardAdmin() {
 
   const openProfile = () => {
     const u = Auth.getCurrentUser() || {};
-    setProfile({ name: u.nombre || '', email: u.correo || '', password: '', avatar: u.avatar || null });
+    setProfile({ name: u.nombre || '', email: u.correo || '', password: '', avatar: u.foto || u.avatar || null });
     setProfileOpen(true);
   };
 
@@ -97,12 +98,13 @@ function DashboardAdmin() {
     const u = Auth.getCurrentUser() || {};
     const body = { nombre: profile.name.trim(), correo: profile.email.trim() };
     if (profile.password) body.password = profile.password;
+    body.foto = profile.avatar || null;
     if (!body.nombre || !body.correo) return alert('Nombre y correo requeridos');
 
     setSavingProfile(true);
     try {
       const actualizado = await Api.put('/perfil', body);
-      const next = { ...u, ...actualizado, avatar: profile.avatar || u.avatar };
+      const next = { ...u, ...actualizado, avatar: actualizado?.foto ?? profile.avatar ?? u.avatar };
       Api.setUser(next);
       setUser(next);
       setProfileOpen(false);
@@ -122,6 +124,7 @@ function DashboardAdmin() {
 
   const profileAvatar =
     profile.avatar ||
+    user?.foto ||
     user?.avatar ||
     'https://ui-avatars.com/api/?name=' + encodeURIComponent(user?.nombre || 'Admin') + '&background=293f2c&color=fff&size=40';
 
@@ -175,7 +178,7 @@ function DashboardAdmin() {
                   <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
                 </button>
                 <div className="profile-trigger" onClick={(e) => { e.stopPropagation(); setDropdownOpen((v) => !v); }}>
-                  <img src={profileAvatar} className="profile-avatar" alt="Perfil" />
+                  <CloudinaryImage src={profileAvatar} className="profile-avatar" alt="Perfil" w={80} h={80} />
                   <div className="profile-info">
                     <div className="profile-name">{user?.nombre || 'Admin'}</div>
                     <div className="profile-role">Administrador</div>
@@ -207,24 +210,15 @@ function DashboardAdmin() {
             <button className="modal-close" onClick={() => setProfileOpen(false)}>&times;</button>
             <h2><i className="fa-solid fa-user-gear"></i> Mi Perfil</h2>
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <img src={profileAvatar} className="profile-modal-avatar" alt="Perfil" />
-              <br />
-              <button className="btn-icon" onClick={() => profileFileInputRef.current?.click()} style={{ marginTop: '6px' }}>
-                <i className="fa-solid fa-camera"></i> Cambiar Foto
-              </button>
-              <input
-                type="file"
-                ref={profileFileInputRef}
-                accept="image/*"
-                hidden
-                onChange={(e) => {
-                  if (e.target.files[0]) {
-                    const r = new FileReader();
-                    r.onload = (ev) => setProfile((p) => ({ ...p, avatar: ev.target.result }));
-                    r.readAsDataURL(e.target.files[0]);
-                  }
-                }}
-              />
+              <CloudinaryImage src={profileAvatar} className="profile-modal-avatar" alt="Perfil" w={200} h={200} />
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px' }}>
+                <ImageUpload
+                  value=""
+                  onChange={(url) => setProfile((p) => ({ ...p, avatar: url || null }))}
+                  label="Cambiar Foto"
+                  showPreview={false}
+                />
+              </div>
             </div>
             <div className="form-group">
               <label>Nombre Completo</label>

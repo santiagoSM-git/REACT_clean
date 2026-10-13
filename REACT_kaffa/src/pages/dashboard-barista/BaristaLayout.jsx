@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useStyles } from '../../hooks/useStyles';
 import { useDashboardTheme } from '../../hooks/useDashboardTheme';
 import { Auth } from '../../lib/auth';
 import { Api } from '../../lib/api';
+import ImageUpload from '../../components/media/ImageUpload';
+import CloudinaryImage from '../../components/media/CloudinaryImage';
 import { BaristaProvider, useBarista } from './BaristaContext.jsx';
 import SidebarBarista from './SidebarBarista';
 
@@ -27,7 +29,6 @@ function BaristaLayoutInner() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState({ name: '', email: '', password: '', avatar: null });
   const [savingProfile, setSavingProfile] = useState(false);
-  const profileFileInputRef = useRef(null);
 
   const sectionKey = pathname.split('/').pop() || 'pedidos';
   const current = SECTION_TITLES[sectionKey] || SECTION_TITLES.pedidos;
@@ -35,7 +36,7 @@ function BaristaLayoutInner() {
   useEffect(() => {
     const u = Auth.getCurrentUser();
     setUser(u);
-    setProfile({ name: u?.nombre || '', email: u?.correo || '', password: '', avatar: u?.avatar || null });
+    setProfile({ name: u?.nombre || '', email: u?.correo || '', password: '', avatar: u?.foto || u?.avatar || null });
   }, []);
 
   useEffect(() => {
@@ -48,7 +49,7 @@ function BaristaLayoutInner() {
 
   const openProfile = () => {
     const u = Auth.getCurrentUser() || {};
-    setProfile({ name: u.nombre || '', email: u.correo || '', password: '', avatar: u.avatar || null });
+    setProfile({ name: u.nombre || '', email: u.correo || '', password: '', avatar: u.foto || u.avatar || null });
     setProfileOpen(true);
   };
 
@@ -56,12 +57,13 @@ function BaristaLayoutInner() {
     const u = Auth.getCurrentUser() || {};
     const body = { nombre: profile.name.trim(), correo: profile.email.trim() };
     if (profile.password) body.password = profile.password;
+    body.foto = profile.avatar || null;
     if (!body.nombre || !body.correo) return alert('Nombre y correo requeridos');
 
     setSavingProfile(true);
     try {
       const actualizado = await Api.put('/perfil', body);
-      const next = { ...u, ...actualizado, avatar: profile.avatar || u.avatar };
+      const next = { ...u, ...actualizado, avatar: actualizado?.foto ?? profile.avatar ?? u.avatar };
       Api.setUser(next);
       setUser(next);
       setProfileOpen(false);
@@ -81,6 +83,7 @@ function BaristaLayoutInner() {
 
   const profileAvatar =
     profile.avatar ||
+    user?.foto ||
     user?.avatar ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.nombre || 'Barista')}&background=293f2c&color=fff`;
 
@@ -118,7 +121,7 @@ function BaristaLayoutInner() {
                 <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'}`}></i>
               </button>
               <div className="profile-trigger" onClick={(e) => { e.stopPropagation(); setDropdownOpen((v) => !v); }}>
-                <img src={profileAvatar} className="profile-avatar" alt="Perfil" />
+                <CloudinaryImage src={profileAvatar} className="profile-avatar" alt="Perfil" w={80} h={80} />
                 <div className="profile-info">
                   <div className="profile-name">{user?.nombre || 'Barista'}</div>
                   <div className="profile-role">Barista</div>
@@ -147,24 +150,15 @@ function BaristaLayoutInner() {
             <button className="modal-close" onClick={() => setProfileOpen(false)}>&times;</button>
             <h2><i className="fa-solid fa-user-gear"></i> Mi Perfil</h2>
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <img src={profile.avatar || profileAvatar} className="profile-modal-avatar" alt="Perfil" />
-              <br />
-              <button className="btn-icon" onClick={() => profileFileInputRef.current?.click()} style={{ marginTop: '6px' }}>
-                <i className="fa-solid fa-camera"></i> Cambiar Foto
-              </button>
-              <input
-                type="file"
-                ref={profileFileInputRef}
-                accept="image/*"
-                hidden
-                onChange={(e) => {
-                  if (e.target.files[0]) {
-                    const r = new FileReader();
-                    r.onload = (ev) => setProfile((p) => ({ ...p, avatar: ev.target.result }));
-                    r.readAsDataURL(e.target.files[0]);
-                  }
-                }}
-              />
+              <CloudinaryImage src={profile.avatar || profileAvatar} className="profile-modal-avatar" alt="Perfil" w={200} h={200} />
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px' }}>
+                <ImageUpload
+                  value=""
+                  onChange={(url) => setProfile((p) => ({ ...p, avatar: url || null }))}
+                  label="Cambiar Foto"
+                  showPreview={false}
+                />
+              </div>
             </div>
             <div className="form-group">
               <label>Nombre Completo</label>

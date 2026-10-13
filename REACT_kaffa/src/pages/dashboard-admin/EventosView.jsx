@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Api } from '../../lib/api';
 import CrudModal from './CrudModal';
+import CloudinaryImage from '../../components/media/CloudinaryImage';
 import { EmptyRow, soloFecha, subirImagenEvento } from './helpers';
 
 const MAX_IMAGENES = 5;
@@ -148,7 +149,7 @@ export default function EventosView() {
                     <tr key={e.id}>
                       <td>
                         {portada ? (
-                          <img src={portada} alt={e.titulo} style={{ width: '56px', height: '42px', objectFit: 'cover', borderRadius: '6px' }} />
+                          <CloudinaryImage src={portada} alt={e.titulo} w={112} h={84} style={{ width: '56px', height: '42px', objectFit: 'cover', borderRadius: '6px' }} />
                         ) : (
                           <span className="text-muted">—</span>
                         )}
@@ -210,7 +211,7 @@ export default function EventosView() {
             <div className="evento-imagenes-grid">
               {modal.imagenes.map((url, i) => (
                 <div className="evento-imagen-item" key={`${url}-${i}`}>
-                  <img src={url} alt={`Imagen ${i + 1}`} />
+                  <CloudinaryImage src={url} alt={`Imagen ${i + 1}`} w={320} h={320} />
                   {i === 0 && <span className="evento-imagen-cover">Portada</span>}
                   <div className="evento-imagen-acciones">
                     <button type="button" className="btn-icon" onClick={() => moverImagen(i, -1)} disabled={i === 0} title="Mover a la izquierda">

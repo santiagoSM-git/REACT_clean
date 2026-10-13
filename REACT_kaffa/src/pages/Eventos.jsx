@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useStyles } from '../hooks/useStyles';
 import { useBodyClass } from '../hooks/useBodyClass';
 import { useEventos } from '../hooks/useEventos';
+import CloudinaryImage from '../components/media/CloudinaryImage';
 
 /** 'YYYY-MM-DD' (+ hora opcional) → fecha legible en español. */
 function fechaEvento(evento) {
@@ -56,7 +57,7 @@ function EventMedia({ imagenes, titulo }) {
       <div className="event-media-track" ref={trackRef} onScroll={onScroll}>
         {imagenes.map((url, i) => (
           <div className="event-media-slide" key={`${url}-${i}`}>
-            <img src={url} alt={`${titulo} — imagen ${i + 1}`} loading="lazy" />
+            <CloudinaryImage src={url} alt={`${titulo} — imagen ${i + 1}`} w={900} h={600} />
           </div>
         ))}
       </div>
