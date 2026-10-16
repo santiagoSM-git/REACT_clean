@@ -118,7 +118,7 @@ function DashboardAdmin() {
   const logout = async () => {
     if (window.confirm('¿Salir del sistema?')) {
       await Auth.logout();
-      navigate('/login');
+      navigate('/', { replace: true });
     }
   };
 

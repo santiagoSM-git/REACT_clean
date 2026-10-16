@@ -77,10 +77,12 @@ export const Api = {
         (data && data.code) || null,
       );
 
-      // Sesión inválida → limpiar (el guard de rutas redirige a /login)
+      // Sesión inválida → limpiar y avisar a la UI (Navbar/Layout escuchan
+      // 'kaffa-auth-change') para que vuelva al estado invitado.
       if (resp.status === 401 && !options._retryLogin) {
         Api.clearToken();
         localStorage.removeItem('kaffaUser');
+        window.dispatchEvent(new Event('kaffa-auth-change'));
       }
       throw err;
     }

@@ -32,7 +32,7 @@ export default function SidebarBarista({ open = false, onClose }) {
   const logout = async () => {
     if (window.confirm('¿Cerrar sesión?')) {
       await Auth.logout();
-      navigate('/login');
+      navigate('/', { replace: true });
     }
   };
 
