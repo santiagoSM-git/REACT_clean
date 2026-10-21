@@ -5,6 +5,7 @@ import { ProductosStore } from '../lib/productos-store';
 import { useCatalogo } from '../hooks/useCatalogo';
 import ProductCard from '../components/product/ProductCard';
 import CloudinaryImage from '../components/media/CloudinaryImage';
+import PromoCarouselPopup from '../components/promociones/PromoCarouselPopup';
 
 function Home() {
   useStyles(['style.css']);
@@ -101,6 +102,8 @@ function Home() {
           </div>
         </div>
       </section>
+
+      <PromoCarouselPopup />
     </>
   );
 }

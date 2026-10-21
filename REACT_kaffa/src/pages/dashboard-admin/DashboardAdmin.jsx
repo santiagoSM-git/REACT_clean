@@ -21,6 +21,7 @@ import ClientesView from './ClientesView';
 import BaristasView from './BaristasView';
 import TurnosView from './TurnosView';
 import EventosView from './EventosView';
+import PromocionesView from './PromocionesView';
 import ReportesView from './ReportesView';
 import AsistenteView from './AsistenteView';
 import ConfigView from './ConfigView';
@@ -41,6 +42,7 @@ const NAV = [
   { id: 'baristas', icon: 'fa-users', label: 'Baristas' },
   { id: 'turnos', icon: 'fa-clock', label: 'Turnos' },
   { id: 'eventos', icon: 'fa-calendar-days', label: 'Eventos' },
+  { id: 'promociones', icon: 'fa-bullhorn', label: 'Promociones' },
   { id: 'reportes', icon: 'fa-flag', label: 'Reportes' },
   { id: 'asistente', icon: 'fa-robot', label: 'Asistente IA' },
   { id: 'config', icon: 'fa-gear', label: 'Configuración' },
@@ -62,6 +64,7 @@ const VIEWS = {
   baristas: BaristasView,
   turnos: TurnosView,
   eventos: EventosView,
+  promociones: PromocionesView,
   reportes: ReportesView,
   asistente: AsistenteView,
   config: ConfigView,
