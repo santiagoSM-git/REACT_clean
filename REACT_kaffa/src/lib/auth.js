@@ -112,6 +112,13 @@ export const Auth = {
     }
   },
 
+  /** Limpia la sesión local (token + usuario) y avisa a la UI. */
+  clearSession() {
+    Api.clearToken();
+    localStorage.removeItem('kaffaUser');
+    notifyAuthChange();
+  },
+
   /** POST /logout + limpieza local. */
   async logout() {
     try {
@@ -119,10 +126,8 @@ export const Auth = {
     } catch {
       /* token ya inválido */
     }
-    Api.clearToken();
-    localStorage.removeItem('kaffaUser');
     localStorage.removeItem('kaffaCarrito');
-    notifyAuthChange();
+    Auth.clearSession();
   },
 
   // ── Recuperación de contraseña y verificación de correo (por código) ──
@@ -183,7 +188,18 @@ export const Auth = {
       if (requiredRole && !Auth.hasRole(requiredRole)) return null;
       return user;
     } catch {
+      // Token inválido/expirado, revocado o backend inalcanzable: la sesión
+      // persistida ya no sirve, así que se limpia (la UI vuelve a invitado).
+      Auth.clearSession();
       return null;
     }
+  },
+
+  /**
+   * Valida la sesión persistida contra GET /me al arrancar la app.
+   * Devuelve el usuario o null (y limpia la sesión si no es válida).
+   */
+  validateSession() {
+    return Auth.requireAuth();
   },
 };

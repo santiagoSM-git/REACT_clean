@@ -36,8 +36,20 @@ export default function TurnosView() {
     }
     setModal(
       t
-        ? { id: t.id, fecha: t.fecha, tipo: t.tipo, barista_ids: (t.baristas || []).map((b) => b.id) }
-        : { id: null, fecha: new Date().toISOString().slice(0, 10), tipo: 'mañana', barista_ids: [] },
+        ? {
+            id: t.id,
+            fecha: t.fecha ? String(t.fecha).slice(0, 10) : '',
+            fecha_fin: t.fecha_fin ? String(t.fecha_fin).slice(0, 10) : '',
+            tipo: t.tipo,
+            barista_ids: (t.baristas || []).map((b) => b.id),
+          }
+        : {
+            id: null,
+            fecha: new Date().toISOString().slice(0, 10),
+            fecha_fin: '',
+            tipo: 'mañana',
+            barista_ids: [],
+          },
     );
   };
 
@@ -48,10 +60,22 @@ export default function TurnosView() {
     }));
   };
 
+  // Muestra "inicio → fin" cuando el turno abarca varios días.
+  const rangoFecha = (t) => {
+    const ini = t.fecha ? String(t.fecha).slice(0, 10) : '';
+    const fin = t.fecha_fin ? String(t.fecha_fin).slice(0, 10) : '';
+    return fin && fin !== ini ? `${soloFecha(ini)} → ${soloFecha(fin)}` : soloFecha(t.fecha);
+  };
+
   const guardar = async () => {
     if (!modal.fecha) return alert('Fecha requerida');
     if (!modal.barista_ids.length) return alert('Asigna al menos un barista');
+    if (modal.fecha_fin && modal.fecha_fin < modal.fecha) {
+      return alert('La fecha fin no puede ser anterior a la fecha de inicio');
+    }
     const body = { fecha: modal.fecha, tipo: modal.tipo, barista_ids: modal.barista_ids };
+    // fecha_fin es opcional: sin ella el turno dura un solo día.
+    if (modal.fecha_fin) body.fecha_fin = modal.fecha_fin;
 
     setSaving(true);
     try {
@@ -94,7 +118,7 @@ export default function TurnosView() {
               ) : (
                 turnos.map((t) => (
                   <tr key={t.id}>
-                    <td>{soloFecha(t.fecha)}</td>
+                    <td>{rangoFecha(t)}</td>
                     <td>{TIPOS_TURNO[t.tipo] || t.tipo}</td>
                     <td>{(t.baristas || []).map((b) => b.nombre).join(', ') || <span className="text-muted">Sin baristas</span>}</td>
                     <td>
@@ -114,6 +138,16 @@ export default function TurnosView() {
           <div className="form-group">
             <label>Fecha</label>
             <input type="date" value={modal.fecha} onChange={(e) => setModal((m) => ({ ...m, fecha: e.target.value }))} />
+          </div>
+          <div className="form-group">
+            <label>Fecha fin <span className="text-muted">(opcional)</span></label>
+            <input
+              type="date"
+              value={modal.fecha_fin}
+              min={modal.fecha}
+              onChange={(e) => setModal((m) => ({ ...m, fecha_fin: e.target.value }))}
+            />
+            <small className="text-muted">Déjala vacía para un turno de un solo día.</small>
           </div>
           <div className="form-group">
             <label>Tipo</label>

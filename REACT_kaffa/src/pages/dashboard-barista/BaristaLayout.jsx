@@ -77,7 +77,7 @@ function BaristaLayoutInner() {
   const logout = async () => {
     if (window.confirm('¿Cerrar sesión?')) {
       await Auth.logout();
-      navigate('/login');
+      navigate('/', { replace: true });
     }
   };
 

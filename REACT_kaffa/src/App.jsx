@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import Layout from './components/layout/Layout';
 import RequireRole from './components/RequireRole';
 import ErrorBoundary from './components/ErrorBoundary';
+import { Auth } from './lib/auth';
 import Home from './pages/Home';
 import Menu from './pages/Menu';
 import Eventos from './pages/Eventos';
@@ -23,6 +25,12 @@ import ChatView from './pages/dashboard-barista/ChatView';
 import CajaView from './pages/dashboard-barista/CajaView';
 
 function App() {
+  // Al arrancar, valida la sesión persistida contra /me: si el token ya no
+  // sirve (expirado, revocado o backend inalcanzable) la UI vuelve a invitado.
+  useEffect(() => {
+    Auth.validateSession();
+  }, []);
+
   return (
     // ErrorBoundary: captura errores de render no controlados en toda la app.
     <ErrorBoundary>
