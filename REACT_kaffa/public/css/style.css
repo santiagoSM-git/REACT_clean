@@ -2121,3 +2121,123 @@ body.eventos-page footer {
   position: static;
   margin-left: auto;
 }
+
+/* ───────────────────────────────────────────────────────────────
+   MANUAL DE USO (acceso público)
+   ─────────────────────────────────────────────────────────────── */
+.manual-cta {
+  padding: 64px 20px 72px;
+  background: linear-gradient(135deg, #f3f9ef 0%, #eaf4e3 100%);
+}
+
+.manual-cta-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 28px 32px;
+  box-shadow: var(--shadow-md);
+}
+
+.manual-cta-icon {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: var(--primary-bg);
+  color: var(--primary-dark);
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+}
+
+.manual-cta-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.manual-cta-copy h2 {
+  margin: 4px 0 6px;
+  color: var(--text);
+  font-size: clamp(1.25rem, 2.2vw, 1.6rem);
+}
+
+.manual-cta-copy p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 650px;
+}
+
+.manual-cta-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 8px 18px rgba(57, 169, 0, 0.22);
+  transition: var(--transition);
+}
+
+.manual-cta-btn:hover {
+  background: var(--primary-dark);
+  color: #ffffff;
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+.manual-cta-btn i {
+  font-size: 0.78em;
+}
+
+.login-manual {
+  margin-top: 10px;
+}
+
+.login-manual a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--primary-dark);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.login-manual a:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+@media (max-width: 780px) {
+  .manual-cta {
+    padding: 44px 16px 52px;
+  }
+
+  .manual-cta-inner {
+    flex-direction: column;
+    text-align: center;
+    padding: 26px 22px;
+    gap: 16px;
+  }
+
+  .manual-cta-copy p {
+    margin: 0 auto;
+  }
+
+  .manual-cta-btn {
+    width: 100%;
+  }
+}

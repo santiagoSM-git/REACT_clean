@@ -118,6 +118,11 @@ function Login() {
         <p className="registro">
           ¿No tienes cuenta? <Link to="/registro">Regístrate aquí</Link>
         </p>
+        <p className="registro login-manual">
+          <a href="/manual/index.html" target="_blank" rel="noopener noreferrer">
+            <i className="fa-solid fa-book-open"></i> ¿Necesitas ayuda? Consulta el manual
+          </a>
+        </p>
       </div>
     </div>
   );

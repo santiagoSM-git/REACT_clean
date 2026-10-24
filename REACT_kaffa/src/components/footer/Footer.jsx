@@ -78,6 +78,15 @@ function Footer() {
                 <Link to={link.to}>{link.label}</Link>
               </li>
             ))}
+            <li>
+              <a
+                href="/manual/index.html"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Manual de uso
+              </a>
+            </li>
           </ul>
         </div>
       </div>
