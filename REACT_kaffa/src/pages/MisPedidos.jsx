@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useStyles } from '../hooks/useStyles';
+import { CLIENTE_HOME } from '../lib/styleManifest';
 import { Api } from '../lib/api';
 import { Auth } from '../lib/auth';
 import { formatCurrency } from '../lib/utils';
@@ -16,7 +17,7 @@ const ESTADOS_CLIENTE = {
 };
 
 function MisPedidos() {
-  useStyles(['cliente-home.css']);
+  useStyles(CLIENTE_HOME);
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {

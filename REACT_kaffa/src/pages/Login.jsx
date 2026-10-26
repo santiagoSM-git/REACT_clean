@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useStyles } from '../hooks/useStyles';
+import { PUBLIC } from '../lib/styleManifest';
+import styles from './auth.module.css';
 import { useBodyClass } from '../hooks/useBodyClass';
 import { Auth } from '../lib/auth';
 import { isValidEmail } from '../lib/utils';
 import { toastSuccess, toastError } from '../lib/toast';
 
 function Login() {
-  useStyles(['style.css', 'auth.css']);
+  useStyles(PUBLIC);
   useBodyClass('login-page');
 
   const navigate = useNavigate();
@@ -84,12 +86,12 @@ function Login() {
                 validate: (v) => isValidEmail(v) || 'Ingresa un correo válido',
               })}
             />
-            {errors.correo && <span className="auth-error">{errors.correo.message}</span>}
+            {errors.correo && <span className={styles.authError}>{errors.correo.message}</span>}
           </div>
 
           <div className="input-group">
             <label htmlFor="password">Contraseña</label>
-            <div className="password-wrapper">
+            <div className={styles.passwordWrapper}>
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
@@ -102,10 +104,10 @@ function Login() {
                 onClick={() => setShowPassword((v) => !v)}
               ></i>
             </div>
-            {errors.password && <span className="auth-error">{errors.password.message}</span>}
+            {errors.password && <span className={styles.authError}>{errors.password.message}</span>}
           </div>
 
-          {feedback && <p className="login-feedback">{feedback}</p>}
+          {feedback && <p className={styles.loginFeedback}>{feedback}</p>}
 
           <button type="submit" className="btn" disabled={loading}>
             {loading ? 'Ingresando…' : 'Ingresar'}

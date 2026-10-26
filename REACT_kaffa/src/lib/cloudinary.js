@@ -15,11 +15,16 @@
  *  - VITE_CLOUDINARY_CLOUD_NAME     (por defecto: roffd6et)
  *  - VITE_CLOUDINARY_UPLOAD_PRESET  (por defecto: KAFFACCYS)
  */
+import axios from 'axios';
 
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'roffd6et';
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'KAFFACCYS';
 
-const UPLOAD_ENDPOINT = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+// Instancia separada SIN el interceptor de apiClient: el token Bearer de
+// KAFFA nunca debe viajar a Cloudinary.
+const cloudinaryClient = axios.create({
+  baseURL: `https://api.cloudinary.com/v1_1/${CLOUD_NAME}`,
+});
 
 /** Tamaño máximo aceptado en cliente (5 MB, igual que el backend). */
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -81,66 +86,55 @@ export function cloudinaryUrl(src, opts = {}) {
  * @param {{onProgress?:(pct:number)=>void, signal?:AbortSignal}} [opts]
  * @returns {Promise<{url:string, secureUrl:string, publicId:string, width:number, height:number, format:string, bytes:number}>}
  */
-export function uploadImage(file, { onProgress, signal } = {}) {
-  if (!file) return Promise.reject(new Error('No se seleccionó ninguna imagen.'));
+export async function uploadImage(file, { onProgress, signal } = {}) {
+  if (!file) throw new Error('No se seleccionó ninguna imagen.');
 
   if (file.type && !ACCEPTED_TYPES.includes(file.type)) {
-    return Promise.reject(new Error('Formato no permitido. Usa JPG, PNG, WebP o AVIF.'));
+    throw new Error('Formato no permitido. Usa JPG, PNG, WebP o AVIF.');
   }
   if (file.size > MAX_IMAGE_BYTES) {
-    return Promise.reject(new Error('La imagen supera el máximo permitido (5 MB).'));
+    throw new Error('La imagen supera el máximo permitido (5 MB).');
   }
 
-  return new Promise((resolve, reject) => {
-    const form = new FormData();
-    form.append('file', file);
-    form.append('upload_preset', UPLOAD_PRESET);
+  const form = new FormData();
+  form.append('file', file);
+  form.append('upload_preset', UPLOAD_PRESET);
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', UPLOAD_ENDPOINT, true);
+  try {
+    const { data } = await cloudinaryClient.post('/image/upload', form, {
+      signal,
+      onUploadProgress: (event) => {
+        if (event.total && typeof onProgress === 'function') {
+          onProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      },
+    });
 
-    if (typeof onProgress === 'function') {
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
-      };
+    if (!data?.secure_url) {
+      throw new Error('Cloudinary no devolvió una URL válida.');
     }
 
-    xhr.onload = () => {
-      let data = {};
-      try {
-        data = JSON.parse(xhr.responseText || '{}');
-      } catch {
-        /* respuesta no JSON (p. ej. HTML de error) */
-      }
-
-      if (xhr.status >= 200 && xhr.status < 300 && data.secure_url) {
-        resolve({
-          url: data.secure_url,
-          secureUrl: data.secure_url,
-          publicId: data.public_id,
-          width: data.width,
-          height: data.height,
-          format: data.format,
-          bytes: data.bytes,
-        });
-      } else {
-        reject(new Error(data?.error?.message || `Cloudinary respondió con error ${xhr.status}.`));
-      }
+    return {
+      url: data.secure_url,
+      secureUrl: data.secure_url,
+      publicId: data.public_id,
+      width: data.width,
+      height: data.height,
+      format: data.format,
+      bytes: data.bytes,
     };
-
-    xhr.onerror = () => reject(new Error('No se pudo conectar con Cloudinary. Revisa tu conexión.'));
-    xhr.onabort = () => reject(new Error('Subida cancelada.'));
-
-    if (signal) {
-      if (signal.aborted) {
-        xhr.abort();
-        return;
-      }
-      signal.addEventListener('abort', () => xhr.abort(), { once: true });
+  } catch (error) {
+    if (axios.isCancel(error)) {
+      throw new Error('Subida cancelada.', { cause: error });
     }
 
-    xhr.send(form);
-  });
+    throw new Error(
+      error.response?.data?.error?.message ||
+        error.message ||
+        `Cloudinary respondió con error ${error.response?.status ?? 'desconocido'}.`,
+      { cause: error },
+    );
+  }
 }
 
 export default { uploadImage, cloudinaryUrl, isCloudinary, CLOUDINARY, MAX_IMAGE_BYTES };

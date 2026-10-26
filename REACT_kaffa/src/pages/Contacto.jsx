@@ -1,4 +1,5 @@
 import { useStyles } from '../hooks/useStyles';
+import { PUBLIC } from '../lib/styleManifest';
 
 const DETALLES = [
   {
@@ -28,7 +29,7 @@ const DETALLES = [
 ];
 
 function Contacto() {
-  useStyles(['style.css']);
+  useStyles(PUBLIC);
 
   return (
     <section className="contact-page">

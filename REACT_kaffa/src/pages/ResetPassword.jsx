@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useStyles } from '../hooks/useStyles';
+import { PUBLIC } from '../lib/styleManifest';
+import styles from './auth.module.css';
 import { useBodyClass } from '../hooks/useBodyClass';
 import { Auth } from '../lib/auth';
 import { toastSuccess, toastError } from '../lib/toast';
@@ -21,7 +23,7 @@ function validarPassword(password) {
  * Llega desde "Olvidé mi contraseña" con ?correo=... en la URL.
  */
 function ResetPassword() {
-  useStyles(['style.css', 'auth.css']);
+  useStyles(PUBLIC);
   useBodyClass('login-page');
 
   const navigate = useNavigate();
@@ -66,7 +68,7 @@ function ResetPassword() {
         <div className="login-box">
           <img className="imagen" src="/imagenes/logo_kaffa.jpg" alt="KAFFA logo" />
           <h2>Falta el correo</h2>
-          <p className="text-muted" style={{ textAlign: 'center', margin: '1rem 0' }}>
+          <p style={{ textAlign: 'center', margin: '1rem 0' }}>
             No sabemos a qué correo enviar el código. Solicítalo de nuevo.
           </p>
           <p className="registro">
@@ -83,7 +85,7 @@ function ResetPassword() {
         <img className="imagen" src="/imagenes/logo_kaffa.jpg" alt="KAFFA logo" />
         <h2>Nueva contraseña</h2>
 
-        <p className="text-muted" style={{ textAlign: 'center', marginBottom: '1rem' }}>
+        <p style={{ textAlign: 'center', marginBottom: '1rem' }}>
           Ingresa el <b>código de 6 dígitos</b> que enviamos a <b>{correo}</b> y tu nueva contraseña.
         </p>
 
@@ -106,7 +108,7 @@ function ResetPassword() {
 
           <div className="input-group">
             <label htmlFor="password">Nueva contraseña</label>
-            <div className="password-wrapper">
+            <div className={styles.passwordWrapper}>
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
@@ -122,13 +124,13 @@ function ResetPassword() {
                 onClick={() => setShowPassword((v) => !v)}
               ></i>
             </div>
-            {errors.password && <span className="auth-error">{errors.password.message}</span>}
-            <small className="text-muted">Mín. 8 caracteres: mayúscula, minúscula, número y símbolo.</small>
+            {errors.password && <span className={styles.authError}>{errors.password.message}</span>}
+            <small className={styles.hint}>Mín. 8 caracteres: mayúscula, minúscula, número y símbolo.</small>
           </div>
 
           <div className="input-group">
             <label htmlFor="confirmar">Confirmar contraseña</label>
-            <div className="password-wrapper">
+            <div className={styles.passwordWrapper}>
               <input
                 type={showConfirmar ? 'text' : 'password'}
                 id="confirmar"
@@ -144,7 +146,7 @@ function ResetPassword() {
                 onClick={() => setShowConfirmar((v) => !v)}
               ></i>
             </div>
-            {errors.confirmar && <span className="auth-error">{errors.confirmar.message}</span>}
+            {errors.confirmar && <span className={styles.authError}>{errors.confirmar.message}</span>}
           </div>
 
           <button type="submit" className="btn" disabled={loading || codigo.length !== 6}>

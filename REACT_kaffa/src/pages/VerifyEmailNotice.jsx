@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStyles } from '../hooks/useStyles';
+import { PUBLIC } from '../lib/styleManifest';
 import { useBodyClass } from '../hooks/useBodyClass';
 import { Auth } from '../lib/auth';
 import { isValidEmail } from '../lib/utils';
@@ -15,7 +16,7 @@ const REENVIO_SEGUNDOS = 60;
  * Permite reenviar el código (con cuenta regresiva).
  */
 function VerifyEmailNotice() {
-  useStyles(['style.css', 'auth.css']);
+  useStyles(PUBLIC);
   useBodyClass('login-page');
 
   const navigate = useNavigate();
@@ -70,7 +71,7 @@ function VerifyEmailNotice() {
         <img className="imagen" src="/imagenes/logo_kaffa.jpg" alt="KAFFA logo" />
         <h2>Verifica tu correo</h2>
 
-        <p className="text-muted" style={{ textAlign: 'center', margin: '1rem 0' }}>
+        <p style={{ textAlign: 'center', margin: '1rem 0' }}>
           Te enviamos un <b>código de 6 dígitos</b> a tu correo electrónico.
           Ingrésalo para activar tu cuenta. Revisa también el spam.
         </p>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStyles } from '../../hooks/useStyles';
+import { PROMOCIONES } from '../../lib/styleManifest';
 import { usePromociones } from '../../hooks/usePromociones';
 import { PromocionesStore } from '../../lib/promociones-store';
 import CloudinaryImage from '../../components/media/CloudinaryImage';
@@ -13,7 +14,7 @@ function estadoPromocion(promo) {
 }
 
 export default function PromocionesView() {
-  useStyles(['promociones.css']);
+  useStyles(PROMOCIONES);
 
   const { promociones } = usePromociones();
   const [modal, setModal] = useState(null);

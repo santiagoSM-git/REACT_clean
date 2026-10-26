@@ -4,11 +4,12 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useStyles } from '../hooks/useStyles';
+import { CLIENTE_HOME } from '../lib/styleManifest';
 import { Api } from '../lib/api';
 import { Auth } from '../lib/auth';
 
 function ChatBarista() {
-  useStyles(['cliente-home.css']);
+  useStyles(CLIENTE_HOME);
   const user = Auth.getCurrentUser();
   const [messages, setMessages] = useState([]);
   const [chatContacto, setChatContacto] = useState(null);

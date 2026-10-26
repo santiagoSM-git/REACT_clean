@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useStyles } from '../hooks/useStyles';
+import { PUBLIC } from '../lib/styleManifest';
+import styles from './auth.module.css';
 import { useBodyClass } from '../hooks/useBodyClass';
 import { Auth } from '../lib/auth';
 import { isValidEmail } from '../lib/utils';
@@ -13,7 +15,7 @@ import { toastSuccess, toastError } from '../lib/toast';
  * La respuesta es uniforme exista o no el correo (anti-enumeración).
  */
 function ForgotPassword() {
-  useStyles(['style.css', 'auth.css']);
+  useStyles(PUBLIC);
   useBodyClass('login-page');
 
   const navigate = useNavigate();
@@ -46,7 +48,7 @@ function ForgotPassword() {
         <h2>Recuperar contraseña</h2>
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <p className="text-muted" style={{ textAlign: 'center', marginBottom: '1rem' }}>
+          <p style={{ textAlign: 'center', marginBottom: '1rem' }}>
             Ingresa tu correo y te enviaremos un <b>código</b> para restablecer tu contraseña.
           </p>
 
@@ -61,7 +63,7 @@ function ForgotPassword() {
                 validate: (v) => isValidEmail(v) || 'Ingresa un correo válido',
               })}
             />
-            {errors.correo && <span className="auth-error">{errors.correo.message}</span>}
+            {errors.correo && <span className={styles.authError}>{errors.correo.message}</span>}
           </div>
 
           <button type="submit" className="btn" disabled={loading}>

@@ -6,10 +6,11 @@ import ClienteWidgets from '../cliente/ClienteWidgets';
 import { CarritoProvider } from '../../context/CarritoContext';
 import { Auth } from '../../lib/auth';
 import { useStyles } from '../../hooks/useStyles';
+import { PUBLIC } from '../../lib/styleManifest';
 
 function Layout() {
   // CSS público compartido por todas las páginas del Layout
-  useStyles(['style.css']);
+  useStyles(PUBLIC);
 
   // Con sesión de cliente se montan los widgets de compra (carrito/pago/perfil)
   const [esCliente, setEsCliente] = useState(() => Auth.isLoggedIn() && Auth.isCliente());

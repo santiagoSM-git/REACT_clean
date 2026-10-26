@@ -11,8 +11,10 @@ import { useEffect } from 'react';
 import { loadStylesheets, unloadStylesheets } from '../lib/stylesManager';
 
 export function useStyles(stylesheets) {
+  const key = JSON.stringify(stylesheets || []);
+
   useEffect(() => {
-    const list = [...(stylesheets || [])];
+    const list = JSON.parse(key);
     if (list.length === 0) return undefined;
 
     loadStylesheets(list);
@@ -20,5 +22,5 @@ export function useStyles(stylesheets) {
     return () => {
       unloadStylesheets(list);
     };
-  }, [JSON.stringify(stylesheets || [])]);
+  }, [key]);
 }

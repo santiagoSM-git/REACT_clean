@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useStyles } from '../../hooks/useStyles';
+import { DASHBOARD_BARISTA } from '../../lib/styleManifest';
 import { useDashboardTheme } from '../../hooks/useDashboardTheme';
 import { Auth } from '../../lib/auth';
 import { Api } from '../../lib/api';
@@ -17,7 +18,7 @@ const SECTION_TITLES = {
 };
 
 function BaristaLayoutInner() {
-  useStyles(['dashboard-base.css', 'dashboard.css']);
+  useStyles(DASHBOARD_BARISTA);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { theme, toggleTheme } = useDashboardTheme();

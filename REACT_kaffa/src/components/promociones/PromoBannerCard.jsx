@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import CloudinaryImage from '../media/CloudinaryImage';
 import { PromocionesStore } from '../../lib/promociones-store';
+import styles from './promociones.module.css';
 
 function resolverEnlace(valor) {
   const enlace = String(valor || '').trim();
@@ -19,20 +20,20 @@ export default function PromoBannerCard({ promo, preview = false, onCta }) {
   const fondo = promo?.color || '#e8f0e0';
 
   const cta = preview ? (
-    <span className="promo-card-cta">{etiquetaCta}</span>
+    <span className={styles.cta}>{etiquetaCta}</span>
   ) : enlace.externo ? (
-    <a className="promo-card-cta" href={enlace.href} target="_blank" rel="noreferrer" onClick={onCta}>
+    <a className={styles.cta} href={enlace.href} target="_blank" rel="noreferrer" onClick={onCta}>
       {etiquetaCta}
     </a>
   ) : (
-    <Link className="promo-card-cta" to={enlace.href} onClick={onCta}>
+    <Link className={styles.cta} to={enlace.href} onClick={onCta}>
       {etiquetaCta}
     </Link>
   );
 
   return (
-    <article className="promo-card" style={{ '--promo-bg': fondo }}>
-      <div className="promo-card-media">
+    <article className={`${styles.card}${preview ? ` ${styles.preview}` : ''}`} style={{ '--promo-bg': fondo }}>
+      <div className={styles.media}>
         <CloudinaryImage
           src={promo?.imagen}
           alt={promo?.nombre || promo?.mensaje || 'Promoción KAFFA'}
@@ -40,20 +41,20 @@ export default function PromoBannerCard({ promo, preview = false, onCta }) {
           h={760}
           loading={preview ? 'eager' : 'lazy'}
           fallback={
-            <span className="promo-card-placeholder" aria-hidden="true">
+            <span className={styles.placeholder} aria-hidden="true">
               <i className={`fa-solid ${tipo.icono}`}></i>
             </span>
           }
         />
       </div>
-      <div className="promo-card-body">
-        <span className="promo-card-eyebrow">
+      <div className={styles.body}>
+        <span className={styles.eyebrow}>
           {promo?.fecha_vencimiento ? '¡Por tiempo limitado!' : 'Promoción especial'}
         </span>
-        <span className="promo-card-tag">
+        <span className={styles.tag}>
           <i className={`fa-solid ${tipo.icono}`}></i> {tipo.label}
         </span>
-        <h3 className="promo-card-title">{mensaje}</h3>
+        <h3 className={styles.title}>{mensaje}</h3>
         {cta}
       </div>
     </article>

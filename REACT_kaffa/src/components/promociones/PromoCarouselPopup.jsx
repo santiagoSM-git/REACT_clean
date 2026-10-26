@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useStyles } from '../../hooks/useStyles';
 import { usePromociones } from '../../hooks/usePromociones';
 import PromoBannerCard from './PromoBannerCard';
+import styles from './promociones.module.css';
 
 const SESSION_KEY = 'kaffaPromoPopupCerrado';
 const AUTOPLAY_MS = 5000;
@@ -23,8 +23,6 @@ function cerradoEnSesion() {
 }
 
 export default function PromoCarouselPopup() {
-  useStyles(['promociones.css']);
-
   const { promociones } = usePromociones({ soloVigentes: true });
   const [cerrada, setCerrada] = useState(cerradoEnSesion);
   const [indice, setIndice] = useState(0);
@@ -92,46 +90,46 @@ export default function PromoCarouselPopup() {
 
   return (
     <div
-      className="promo-popup-overlay"
+      className={styles.overlay}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) cerrar();
       }}
     >
       <div
-        className="promo-popup"
+        className={styles.popup}
         role="dialog"
         aria-modal="true"
         aria-label="Promociones KAFFA"
         onMouseEnter={() => setPausadoHover(true)}
         onMouseLeave={() => setPausadoHover(false)}
       >
-        <button type="button" className="promo-popup-close" onClick={cerrar} aria-label="Cerrar promociones">
+        <button type="button" className={styles.close} onClick={cerrar} aria-label="Cerrar promociones">
           <i className="fa-solid fa-xmark"></i>
         </button>
 
         {total > 1 && (
-          <button type="button" className="promo-popup-nav prev" onClick={() => mover(-1)} aria-label="Promoción anterior">
+          <button type="button" className={`${styles.nav} ${styles.prev}`} onClick={() => mover(-1)} aria-label="Promoción anterior">
             <i className="fa-solid fa-chevron-left"></i>
           </button>
         )}
 
-        <div className="promo-popup-card" key={promoActual.id}>
+        <div className={styles.popupCard} key={promoActual.id}>
           <PromoBannerCard promo={promoActual} onCta={() => setCerrada(true)} />
         </div>
 
         {total > 1 && (
-          <button type="button" className="promo-popup-nav next" onClick={() => mover(1)} aria-label="Promoción siguiente">
+          <button type="button" className={`${styles.nav} ${styles.next}`} onClick={() => mover(1)} aria-label="Promoción siguiente">
             <i className="fa-solid fa-chevron-right"></i>
           </button>
         )}
 
         {total > 1 && (
-          <div className="promo-popup-dots" role="tablist" aria-label="Seleccionar promoción">
+          <div className={styles.dots} role="tablist" aria-label="Seleccionar promoción">
             {promociones.map((promo, i) => (
               <button
                 key={promo.id}
                 type="button"
-                className={`promo-popup-dot${i === indiceActual ? ' active' : ''}`}
+                className={`${styles.dot}${i === indiceActual ? ` ${styles.active}` : ''}`}
                 onClick={() => irA(i)}
                 role="tab"
                 aria-selected={i === indiceActual}

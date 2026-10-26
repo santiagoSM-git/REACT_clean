@@ -1,0 +1,229 @@
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  animation: khFadeIn 0.2s ease;
+}
+
+.content {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 30px;
+  width: 90%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+  animation: khModalSlideIn 0.25s ease;
+  position: relative;
+  color: #1a3116;
+  font-family: 'Poppins', sans-serif;
+}
+
+.close {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.close:hover {
+  color: #1a3116;
+}
+
+.content h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a3116;
+  margin-bottom: 18px;
+}
+
+.formGroup {
+  margin-bottom: 14px;
+}
+
+.formGroup label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #3a5a2e;
+  margin-bottom: 5px;
+}
+
+.formGroup input,
+.formGroup select,
+.formGroup textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  background: #fff;
+  color: #1a3116;
+  box-sizing: border-box;
+}
+
+.formGroup input:focus,
+.formGroup select:focus,
+.formGroup textarea:focus {
+  border-color: #39a900;
+  box-shadow: 0 0 0 3px rgba(57, 169, 0, 0.12);
+}
+
+.formActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
+.profileAvatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #39a900;
+}
+
+.textMuted {
+  color: #888;
+}
+
+.cartItem {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 8px 0;
+  margin-bottom: 8px;
+}
+
+.cartItemNota {
+  margin: -4px 0 10px;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: #3a5a2e;
+}
+
+.qtyStepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qtyStepper button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid #39a900;
+  background: #fff;
+  color: #39a900;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.qtyStepper button:hover {
+  background: #39a900;
+  color: #fff;
+}
+
+.qtyStepper span {
+  min-width: 26px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.qtyStepper em {
+  margin-left: auto;
+  font-style: normal;
+  color: #39a900;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.qtyStepper.qtySm button {
+  width: 24px;
+  height: 24px;
+  font-size: 0.85rem;
+}
+
+.qtyStepper.qtySm span {
+  min-width: 18px;
+  font-size: 0.85rem;
+}
+
+.paymentOptions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.paymentOpt {
+  flex: 1;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.paymentOpt:hover {
+  border-color: #39a900;
+}
+
+.paymentOpt.selected {
+  border-color: #39a900;
+  background: #f0f7f0;
+  color: #39a900;
+  font-weight: 600;
+}
+
+@keyframes khFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes khModalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 500px) {
+  .content {
+    padding: 20px;
+    width: 95%;
+  }
+}

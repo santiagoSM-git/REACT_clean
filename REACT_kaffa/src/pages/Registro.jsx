@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useStyles } from '../hooks/useStyles';
+import { PUBLIC } from '../lib/styleManifest';
+import styles from './auth.module.css';
 import { useBodyClass } from '../hooks/useBodyClass';
 import { Auth } from '../lib/auth';
 import { isValidEmail } from '../lib/utils';
@@ -18,7 +20,7 @@ function validarPassword(password) {
 }
 
 function Registro() {
-  useStyles(['style.css', 'auth.css']);
+  useStyles(PUBLIC);
   useBodyClass('login-page');
 
   const navigate = useNavigate();
@@ -65,7 +67,7 @@ function Registro() {
               placeholder="Tu nombre completo"
               {...register('nombre', { required: 'El nombre es obligatorio' })}
             />
-            {errors.nombre && <span className="auth-error">{errors.nombre.message}</span>}
+            {errors.nombre && <span className={styles.authError}>{errors.nombre.message}</span>}
           </div>
 
           <div className="input-group">
@@ -79,12 +81,12 @@ function Registro() {
                 validate: (v) => isValidEmail(v) || 'Ingresa un correo válido',
               })}
             />
-            {errors.email && <span className="auth-error">{errors.email.message}</span>}
+            {errors.email && <span className={styles.authError}>{errors.email.message}</span>}
           </div>
 
           <div className="input-group">
             <label htmlFor="password">Contraseña</label>
-            <div className="password-wrapper">
+            <div className={styles.passwordWrapper}>
               <input
                 type={showPassword ? 'text' : 'password'}
                 id="password"
@@ -100,13 +102,13 @@ function Registro() {
                 onClick={() => setShowPassword((v) => !v)}
               ></i>
             </div>
-            {errors.password && <span className="auth-error">{errors.password.message}</span>}
-            <small className="text-muted">Mín. 8 caracteres: mayúscula, minúscula, número y símbolo.</small>
+            {errors.password && <span className={styles.authError}>{errors.password.message}</span>}
+            <small className={styles.hint}>Mín. 8 caracteres: mayúscula, minúscula, número y símbolo.</small>
           </div>
 
           <div className="input-group">
             <label htmlFor="confirmar">Confirmar Contraseña</label>
-            <div className="password-wrapper">
+            <div className={styles.passwordWrapper}>
               <input
                 type={showConfirmar ? 'text' : 'password'}
                 id="confirmar"
@@ -122,7 +124,7 @@ function Registro() {
                 onClick={() => setShowConfirmar((v) => !v)}
               ></i>
             </div>
-            {errors.confirmar && <span className="auth-error">{errors.confirmar.message}</span>}
+            {errors.confirmar && <span className={styles.authError}>{errors.confirmar.message}</span>}
           </div>
 
           <button type="submit" className="btn" disabled={loading}>

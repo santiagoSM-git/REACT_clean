@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStyles } from '../../hooks/useStyles';
+import { DASHBOARD_ADMIN } from '../../lib/styleManifest';
 import { useDashboardTheme } from '../../hooks/useDashboardTheme';
 import { Auth } from '../../lib/auth';
 import { Api } from '../../lib/api';
@@ -71,7 +72,7 @@ const VIEWS = {
 };
 
 function DashboardAdmin() {
-  useStyles(['dashboard-base.css', 'dashboard-admin.css']);
+  useStyles(DASHBOARD_ADMIN);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useDashboardTheme();
 

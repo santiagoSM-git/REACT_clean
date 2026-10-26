@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useStyles } from '../hooks/useStyles';
+import { PUBLIC } from '../lib/styleManifest';
 import { useBodyClass } from '../hooks/useBodyClass';
 import { useEventos } from '../hooks/useEventos';
 import CloudinaryImage from '../components/media/CloudinaryImage';
@@ -101,7 +102,7 @@ function EventMedia({ imagenes, titulo }) {
 }
 
 function Eventos() {
-  useStyles(['style.css']);
+  useStyles(PUBLIC);
   useBodyClass('eventos-page');
 
   const { eventos, cargando, error, reintentar } = useEventos();

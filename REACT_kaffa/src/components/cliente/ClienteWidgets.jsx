@@ -6,10 +6,10 @@
 import { useEffect, useState } from 'react';
 import ImageUpload from '../media/ImageUpload';
 import CloudinaryImage from '../media/CloudinaryImage';
-import { useStyles } from '../../hooks/useStyles';
 import { useCarrito } from '../../context/CarritoContext';
 import { Auth } from '../../lib/auth';
 import { formatCurrency } from '../../lib/utils';
+import styles from './clienteWidgets.module.css';
 
 const IMG_DEFAULT = 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400';
 
@@ -30,9 +30,9 @@ function ProductDetailModal() {
   const unit = Number(currentProduct.precio_venta) || 0;
 
   return (
-    <div className="modal-overlay open" style={{ display: 'flex' }} onClick={cerrarDetalle}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={cerrarDetalle}>&times;</button>
+    <div className={styles.overlay} style={{ display: 'flex' }} onClick={cerrarDetalle}>
+      <div className={styles.content} onClick={(e) => e.stopPropagation()}>
+        <button className={styles.close} onClick={cerrarDetalle}>&times;</button>
         <CloudinaryImage
           src={currentProduct.imagen || IMG_DEFAULT}
           style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', marginBottom: '10px' }}
@@ -44,11 +44,11 @@ function ProductDetailModal() {
         <p style={{ color: 'var(--primary, #39A900)', fontWeight: '700', fontSize: '1.2rem' }}>
           {formatCurrency(unit)}
         </p>
-        <p className="text-muted" style={{ fontSize: '0.85rem' }}>{currentProduct.descripcion || ''}</p>
+        <p className={styles.textMuted} style={{ fontSize: '0.85rem' }}>{currentProduct.descripcion || ''}</p>
 
-        <div className="form-group" style={{ marginTop: '14px' }}>
+        <div className={styles.formGroup} style={{ marginTop: '14px' }}>
           <label>Cantidad</label>
-          <div className="qty-stepper">
+          <div className={styles.qtyStepper}>
             <button type="button" onClick={() => setCantidad((c) => Math.max(1, c - 1))} aria-label="Menos">−</button>
             <span>{cantidad}</span>
             <button type="button" onClick={() => setCantidad((c) => c + 1)} aria-label="Más">+</button>
@@ -56,7 +56,7 @@ function ProductDetailModal() {
           </div>
         </div>
 
-        <div className="form-group">
+        <div className={styles.formGroup}>
           <label>Notas para el barista (opcional)</label>
           <textarea
             rows={2}
@@ -84,9 +84,9 @@ function CartModal() {
   if (!showCartModal) return null;
 
   return (
-    <div className="modal-overlay open" style={{ display: 'flex' }} onClick={cerrarCarro}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={cerrarCarro}>&times;</button>
+    <div className={styles.overlay} style={{ display: 'flex' }} onClick={cerrarCarro}>
+      <div className={styles.content} onClick={(e) => e.stopPropagation()}>
+        <button className={styles.close} onClick={cerrarCarro}>&times;</button>
         <h2><i className="fa-solid fa-cart-shopping"></i> Tu Carrito</h2>
         <div style={{ maxHeight: '250px', overflowY: 'auto', marginBottom: '15px' }}>
           {cart.length === 0 ? (
@@ -94,9 +94,9 @@ function CartModal() {
           ) : (
             cart.map((i, x) => (
               <div key={x}>
-                <div className="cart-item">
+                <div className={styles.cartItem}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div className="qty-stepper qty-sm">
+                    <div className={`${styles.qtyStepper} ${styles.qtySm}`}>
                       <button type="button" onClick={() => updateCartQty(x, -1)} aria-label="Menos">−</button>
                       <span>{i.qty}</span>
                       <button type="button" onClick={() => updateCartQty(x, 1)} aria-label="Más">+</button>
@@ -109,7 +109,7 @@ function CartModal() {
                   </div>
                 </div>
                 {i.nota && (
-                  <p className="cart-item-nota">
+                  <p className={styles.cartItemNota}>
                     <i className="fa-solid fa-note-sticky"></i> {i.nota}
                   </p>
                 )}
@@ -136,18 +136,18 @@ function PaymentModal() {
   if (!showPaymentModal) return null;
 
   return (
-    <div className="modal-overlay open" style={{ display: 'flex' }} onClick={cerrarPago}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={cerrarPago}>&times;</button>
+    <div className={styles.overlay} style={{ display: 'flex' }} onClick={cerrarPago}>
+      <div className={styles.content} onClick={(e) => e.stopPropagation()}>
+        <button className={styles.close} onClick={cerrarPago}>&times;</button>
         <h2><i className="fa-solid fa-credit-card"></i> Método de Pago</h2>
 
-        <div className="form-group">
+        <div className={styles.formGroup}>
           <label>¿Cómo pagas?</label>
-          <div className="payment-options">
-            <div className={`payment-opt${!payOnline ? ' selected' : ''}`} onClick={() => setPagoField('online', false)}>
+          <div className={styles.paymentOptions}>
+            <div className={`${styles.paymentOpt}${!payOnline ? ` ${styles.selected}` : ''}`} onClick={() => setPagoField('online', false)}>
               <i className="fa-solid fa-money-bill"></i> Efectivo en mostrador
             </div>
-            <div className={`payment-opt${payOnline ? ' selected' : ''}`} onClick={() => setPagoField('online', true)}>
+            <div className={`${styles.paymentOpt}${payOnline ? ` ${styles.selected}` : ''}`} onClick={() => setPagoField('online', true)}>
               <i className="fa-solid fa-mobile-screen"></i> Pagar ya (transferencia)
             </div>
           </div>
@@ -155,7 +155,7 @@ function PaymentModal() {
 
         {payOnline && (
           <>
-            <div className="form-group">
+            <div className={styles.formGroup}>
               <label>Medio de Pago</label>
               <select value={paymentMedioId} onChange={(e) => setPagoField('medio', e.target.value)}>
                 {medios.filter((m) => m.es_virtual).map((m) => (
@@ -163,7 +163,7 @@ function PaymentModal() {
                 ))}
               </select>
             </div>
-            <div className="form-group">
+            <div className={styles.formGroup}>
               <label>Comprobante (obligatorio para medios virtuales)</label>
               <ImageUpload
                 value={comprobanteUrl}
@@ -171,7 +171,7 @@ function PaymentModal() {
                 label="Subir comprobante…"
                 previewSize={80}
               />
-              <small className="text-muted">Sube una captura del pago. El barista la verificará.</small>
+              <small className={styles.textMuted}>Sube una captura del pago. El barista la verificará.</small>
             </div>
           </>
         )}
@@ -212,12 +212,12 @@ function ProfileModal() {
   };
 
   return (
-    <div className="modal-overlay open" style={{ display: 'flex' }} onClick={cerrarPerfil}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={cerrarPerfil}>&times;</button>
+    <div className={styles.overlay} style={{ display: 'flex' }} onClick={cerrarPerfil}>
+      <div className={styles.content} onClick={(e) => e.stopPropagation()}>
+        <button className={styles.close} onClick={cerrarPerfil}>&times;</button>
         <h2><i className="fa-solid fa-user-gear"></i> Mi Perfil</h2>
         <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-          <CloudinaryImage src={avatarSrc} className="profile-modal-avatar" alt="Perfil" w={200} h={200} />
+          <CloudinaryImage src={avatarSrc} className={styles.profileAvatar} alt="Perfil" w={200} h={200} />
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px' }}>
             <ImageUpload
               value=""
@@ -227,19 +227,19 @@ function ProfileModal() {
             />
           </div>
         </div>
-        <div className="form-group">
+        <div className={styles.formGroup}>
           <label>Nombre Completo</label>
           <input type="text" value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} required />
         </div>
-        <div className="form-group">
+        <div className={styles.formGroup}>
           <label>Correo Electrónico</label>
           <input type="email" value={profile.email} onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))} required />
         </div>
-        <div className="form-group">
+        <div className={styles.formGroup}>
           <label>Nueva Contraseña (opcional)</label>
           <input type="password" value={profile.password} placeholder="Mín. 8: mayúscula, minúscula, número y símbolo" onChange={(e) => setProfile((p) => ({ ...p, password: e.target.value }))} />
         </div>
-        <div className="form-actions">
+        <div className={styles.formActions}>
           <button className="btn-secondary" onClick={cerrarPerfil}>Cancelar</button>
           <button className="btn-primary" onClick={onSave} disabled={saving}>
             <i className="fa-solid fa-floppy-disk"></i> Guardar
@@ -251,14 +251,12 @@ function ProfileModal() {
 }
 
 export default function ClienteWidgets() {
-  useStyles(['cliente-home.css']);
-
   return (
-    <div className="cliente-home">
+    <>
       <ProductDetailModal />
       <CartModal />
       <PaymentModal />
       <ProfileModal />
-    </div>
+    </>
   );
 }

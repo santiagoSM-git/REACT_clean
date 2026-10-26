@@ -270,24 +270,6 @@ button { cursor: pointer; font-family: inherit; }
   border-color: var(--text-muted, #999);
 }
 
-.btn-danger {
-  background: var(--danger, #e74c3c);
-  color: #fff;
-  border: none;
-  padding: 9px 20px;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  transition: all 0.2s;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.btn-danger:hover { background: #c0392b; transform: translateY(-1px); }
-
 .btn-icon {
   border: none;
   background: none;
@@ -318,20 +300,6 @@ button { cursor: pointer; font-family: inherit; }
   border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--shadow-sm, 0 2px 4px rgba(0,0,0,0.05));
-}
-
-.table-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border, rgba(0,0,0,0.06));
-}
-
-.table-toolbar h3 {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text, #1a3116);
 }
 
 table {
@@ -377,13 +345,11 @@ table tbody tr:hover { background: rgba(0,0,0,0.015); }
 .badge-warning { background: #fff8e1; color: #f39c12; }
 .badge-danger { background: #fde8e8; color: #e74c3c; }
 .badge-info { background: #e3f2fd; color: #2980b9; }
-.badge-primary { background: #e8f5e9; color: var(--primary, #39A900); }
 
 [data-theme="dark"] .badge-success { background: rgba(46,204,113,0.15); color: #2ecc71; }
 [data-theme="dark"] .badge-warning { background: rgba(240,173,78,0.15); color: #f0ad4e; }
 [data-theme="dark"] .badge-danger { background: rgba(231,76,60,0.15); color: #e74c3c; }
 [data-theme="dark"] .badge-info { background: rgba(52,152,219,0.15); color: #3498db; }
-[data-theme="dark"] .badge-primary { background: rgba(57,169,0,0.15); color: #4DBD8B; }
 
 /* ── MODALS ── */
 .modal-overlay {
@@ -496,7 +462,6 @@ table tbody tr:hover { background: rgba(0,0,0,0.015); }
 }
 
 .text-muted { color: var(--text-muted, #888); }
-.text-primary { color: var(--primary, #39A900); }
 .text-danger { color: var(--danger, #e74c3c); }
 
 /* ── SCROLLBAR ── */

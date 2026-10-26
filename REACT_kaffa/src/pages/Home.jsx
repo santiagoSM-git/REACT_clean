@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useStyles } from '../hooks/useStyles';
+import { PUBLIC } from '../lib/styleManifest';
 import { useBodyClass } from '../hooks/useBodyClass';
 import { ProductosStore } from '../lib/productos-store';
 import { useCatalogo } from '../hooks/useCatalogo';
@@ -8,7 +9,7 @@ import CloudinaryImage from '../components/media/CloudinaryImage';
 import PromoCarouselPopup from '../components/promociones/PromoCarouselPopup';
 
 function Home() {
-  useStyles(['style.css']);
+  useStyles(PUBLIC);
   useBodyClass('home-page');
 
   const { productos, esDemo } = useCatalogo();

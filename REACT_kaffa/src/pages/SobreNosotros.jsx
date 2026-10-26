@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStyles } from '../hooks/useStyles';
+import { PUBLIC } from '../lib/styleManifest';
 import { useEquipo } from '../hooks/useEquipo';
 import CloudinaryImage from '../components/media/CloudinaryImage';
 import { TURNOS } from '../lib/turnos';
@@ -167,7 +168,7 @@ function EquipoSection() {
 }
 
 function SobreNosotros() {
-  useStyles(['style.css']);
+  useStyles(PUBLIC);
 
   return (
     <>

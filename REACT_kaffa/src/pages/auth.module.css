@@ -1,0 +1,46 @@
+.passwordWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.passwordWrapper input {
+  width: 100%;
+  padding-right: 40px;
+  box-sizing: border-box;
+}
+
+.passwordWrapper i {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #666;
+  z-index: 10;
+}
+
+.passwordWrapper i:hover {
+  color: #333;
+}
+
+.loginFeedback {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e74c3c;
+  min-height: 1.2em;
+}
+
+.authError {
+  display: block;
+  color: #e74c3c;
+  font-size: 0.78rem;
+  margin-top: 4px;
+}
+
+.hint {
+  display: block;
+  color: #888;
+  font-size: 0.75rem;
+  margin-top: 4px;
+}

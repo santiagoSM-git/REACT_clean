@@ -7,9 +7,8 @@
  * sus hojas desde public/css/ evitando conflictos globales.
  *
  * - CSS públicos:  ['style.css']
- * - Auth:          ['auth.css']
  * - Dashboards:    ['dashboard-base.css', 'dashboard-admin.css' | 'dashboard.css']
- * - Widgets cliente en el sitio público: ['cliente-home.css'] (scopeado)
+ * - Cliente en el sitio público (chat/pedidos): ['cliente-home.css'] (scopeado)
  *
  * Se usa un contador de referencia por hoja para soportar montaje/desmontaje
  * de múltiples componentes (StrictMode) y rutas anidadas sin cortar estilos.
@@ -18,12 +17,18 @@
 const BASE_PATH = '/css/';
 
 const loading = new Map(); // href -> Promise<link>
+const loaded = new Map(); // href -> <link> ya insertado en el DOM
 const refCount = new Map(); // href -> número de componentes activos
+
+function findLink(href) {
+  return document.querySelector(`link[data-kaffa-style="${href}"]`);
+}
 
 function createLink(href) {
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = BASE_PATH + href;
+  link.dataset.kaffaStyle = href;
   document.head.appendChild(link);
 
   const promise = new Promise((resolve) => {
@@ -40,11 +45,24 @@ export function loadStylesheet(href) {
 
   if (loading.has(href)) return loading.get(href);
 
-  const { promise } = createLink(href);
+  const cached = loaded.get(href);
+  if (cached?.isConnected) return Promise.resolve(cached);
+  if (cached) loaded.delete(href);
+
+  // Reutiliza un <link> que ya esté en el DOM (p. ej. tras un doble montaje).
+  const existing = findLink(href);
+  if (existing) {
+    loaded.set(href, existing);
+    return Promise.resolve(existing);
+  }
+
+  const { link, promise } = createLink(href);
+  loaded.set(href, link);
   loading.set(href, promise);
 
   promise.finally(() => {
-    loading.delete(href);
+    // Solo limpia esta carga; otra pudo empezar después (StrictMode).
+    if (loading.get(href) === promise) loading.delete(href);
   });
 
   return promise;
@@ -56,7 +74,8 @@ export function unloadStylesheet(href) {
   if (count <= 1) {
     refCount.delete(href);
     loading.delete(href); // permite recargar creando un <link> nuevo (StrictMode)
-    document.querySelectorAll(`link[href="${BASE_PATH + href}"]`).forEach((link) => link.remove());
+    loaded.delete(href);
+    document.querySelectorAll(`link[data-kaffa-style="${href}"]`).forEach((link) => link.remove());
   } else {
     refCount.set(href, count - 1);
   }

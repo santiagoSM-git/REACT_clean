@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useStyles } from '../hooks/useStyles';
+import { PUBLIC } from '../lib/styleManifest';
 import { ProductosStore } from '../lib/productos-store';
 import { useCatalogo } from '../hooks/useCatalogo';
 import ProductCard from '../components/product/ProductCard';
@@ -7,7 +8,7 @@ import ProductCard from '../components/product/ProductCard';
 const CATEGORIAS = ['Cafés', 'Postres', 'Snacks'];
 
 function Menu() {
-  useStyles(['style.css']);
+  useStyles(PUBLIC);
   const { productos, categorias, esDemo } = useCatalogo();
   const [categoriaActiva, setCategoriaActiva] = useState(null);
 

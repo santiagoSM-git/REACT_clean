@@ -1,21 +1,14 @@
 /**
  * KAFFA - Cliente HTTP de la API Laravel (React)
- * Base relativa '/api/v1' (Vite proxea a http://localhost:8000 en dev;
- * en producción con Apache, el mismo host resuelve /api/v1).
- * Maneja token Sanctum, formatos de respuesta y errores estandarizados.
+ * Fachada sobre la instancia central de Axios (./axiosClient).
+ * Mantiene el contrato histórico de Api.* para no tocar los consumidores:
+ * los datos se resuelven directamente (sin .json()) y los errores llegan
+ * como ApiError con status, errors y code.
  */
+import { apiClient, API_BASE } from './axiosClient';
+import { ApiError } from './apiError';
 
-// Cambia aquí si el backend vive en otro origen (ej. 'http://localhost:8000/api/v1')
-export const API_BASE = '/api/v1';
-
-export class ApiError extends Error {
-  constructor(status, message, errors = null, code = null) {
-    super(message || `Error ${status}`);
-    this.status = status;
-    this.errors = errors;
-    this.code = code;
-  }
-}
+export { API_BASE, ApiError };
 
 export const Api = {
   BASE: API_BASE,
@@ -38,70 +31,32 @@ export const Api = {
   // ── Núcleo ──
 
   async request(path, options = {}) {
-    const url = path.startsWith('http') ? path : Api.BASE + path;
-    const headers = { Accept: 'application/json', ...(options.headers || {}) };
+    const response = await apiClient.request({
+      url: path,
+      method: options.method || 'GET',
+      data: options.body,
+      params: options.params,
+      headers: options.headers,
+      signal: options.signal,
+    });
 
-    const body = options.body;
-    if (body instanceof FormData) {
-      options.body = body;
-    } else if (body !== undefined && body !== null) {
-      headers['Content-Type'] = 'application/json';
-      options.body = JSON.stringify(body);
-    }
-
-    const token = Api.getToken();
-    if (token) headers.Authorization = 'Bearer ' + token;
-
-    let resp;
-    try {
-      resp = await fetch(url, { ...options, headers });
-    } catch {
-      throw new ApiError(0, `No se pudo conectar con el servidor (${Api.BASE}).`);
-    }
-
-    let data = null;
-    const text = await resp.text();
-    if (text) {
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = { message: text };
-      }
-    }
-
-    if (!resp.ok) {
-      const err = new ApiError(
-        resp.status,
-        (data && (data.message || data.error)) || `Error ${resp.status}`,
-        (data && data.errors) || null,
-        (data && data.code) || null,
-      );
-
-      // Sesión inválida → limpiar y avisar a la UI (Navbar/Layout escuchan
-      // 'kaffa-auth-change') para que vuelva al estado invitado.
-      if (resp.status === 401 && !options._retryLogin) {
-        Api.clearToken();
-        localStorage.removeItem('kaffaUser');
-        window.dispatchEvent(new Event('kaffa-auth-change'));
-      }
-      throw err;
-    }
-
-    return data;
+    // Axios ya entrega el cuerpo parseado en response.data. Las respuestas
+    // 204/vacías se normalizan a null, igual que antes.
+    return response.data === '' || response.data === undefined
+      ? null
+      : response.data;
   },
 
-  get: (path, params) => {
-    let url = path;
-    if (params && Object.keys(params).length) {
-      const qs = new URLSearchParams();
-      Object.keys(params).forEach((k) => {
-        const v = params[k];
-        if (v !== undefined && v !== null && v !== '') qs.append(k, v);
-      });
-      const s = qs.toString();
-      if (s) url += (url.includes('?') ? '&' : '?') + s;
-    }
-    return Api.request(url, { method: 'GET' });
+  get(path, params) {
+    const clean = params
+      ? Object.fromEntries(
+          Object.entries(params).filter(
+            ([, value]) => value !== undefined && value !== null && value !== '',
+          ),
+        )
+      : undefined;
+
+    return Api.request(path, { method: 'GET', params: clean });
   },
 
   post: (path, body) => Api.request(path, { method: 'POST', body }),

@@ -3,13 +3,6 @@
    El resto de hojas de estilo se cargan por ruta (ver hooks/useStyles.js),
    replicando el comportamiento original donde cada página HTML cargaba solo sus CSS. */
 
-.auth-error {
-  display: block;
-  margin-top: 4px;
-  font-size: 0.8rem;
-  color: #e74c3c;
-}
-
 /* ─────────────────────────────────────────────
    Layout del Panel de Barista
    dashboard.css aplica `body { display:flex; height:100vh }`.
