@@ -94,4 +94,29 @@ public/css/           hojas de estilo cargadas en caliente por página (stylesMa
 
 ## Pruebas
 
+<<<<<<< HEAD
 No hay suite automatizada de frontend. Verificación: `npm run lint`, `npm run build` y recorrido manual de rutas públicas, auth, admin y barista (incluyendo tema claro/oscuro y revisar en DevTools que no se dupliquen hojas CSS). Ver `../../docs/08-pruebas.md`.
+=======
+No hay suite automatizada de frontend (solo `npm run lint`). Ver `../../docs/08-pruebas.md`.
+
+## Manual de uso
+
+El manual interactivo se publica como sitio estático en `public/manual/` y se sirve en:
+
+```text
+/manual/index.html
+```
+
+Se abre en una pestaña nueva desde el home, el footer, el login y los paneles de barista/administrador.
+
+Para actualizarlo después de regenerar el manual:
+
+```bash
+pnpm manual:sync   # copia docs/manual-frontend/dist → public/manual
+pnpm build         # lo incluye en dist/manual
+```
+
+No edites `public/manual` a mano: es una copia generada. El editor de puntos (`editor.html`) no se publica.
+
+Más detalles de despliegue y limpieza de cuentas demo: [`../../docs/manual-frontend/PUBLICACION.md`](../../docs/manual-frontend/PUBLICACION.md).
+>>>>>>> 913c9a43208fd1db857f34a7e305f5ca7b6744bd

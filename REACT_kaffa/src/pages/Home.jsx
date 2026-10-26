@@ -104,6 +104,33 @@ function Home() {
         </div>
       </section>
 
+      {/* MANUAL DE USO */}
+      <section className="manual-cta">
+        <div className="manual-cta-inner">
+          <div className="manual-cta-icon" aria-hidden="true">
+            <i className="fa-solid fa-book-open"></i>
+          </div>
+          <div className="manual-cta-copy">
+            <span className="section-tag">Ayuda</span>
+            <h2>¿Primera vez en KAFFA?</h2>
+            <p>
+              Consulta el manual de uso: capturas anotadas, recorridos guiados y
+              solución de los errores más comunes, para clientes, baristas y
+              administradores.
+            </p>
+          </div>
+          <a
+            className="manual-cta-btn"
+            href="/manual/index.html"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Abrir manual
+            <i className="fa-solid fa-arrow-up-right-from-square"></i>
+          </a>
+        </div>
+      </section>
+
       <PromoCarouselPopup />
     </>
   );

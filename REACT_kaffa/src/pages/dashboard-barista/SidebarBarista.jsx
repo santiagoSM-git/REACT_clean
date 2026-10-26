@@ -63,6 +63,15 @@ export default function SidebarBarista({ open = false, onClose }) {
         </nav>
         <div className="sidebar-divider"></div>
         <nav className="sidebar-auth">
+          <a
+            className="sidebar-link"
+            href="/manual/index.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose}
+          >
+            <i className="fa-solid fa-book-open"></i> Manual de uso
+          </a>
           <a className="sidebar-link" onClick={logout}>
             <i className="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
           </a>
