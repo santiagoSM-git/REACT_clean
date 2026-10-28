@@ -1,67 +1,68 @@
 /**
- * KAFFA - Catálogo real para el sitio público
- * Lee la API (/productos + /categorias). Si la API no responde o viene vacía,
- * mantiene el catálogo estático de demostración (no comprable).
+ * KAFFA - Catálogo real para el sitio público.
+ *
+ * La API es la única fuente de verdad: si no hay productos registrados, la
+ * lista queda vacía (no se muestra el catálogo demo). Si la API falla, también
+ * queda vacía y se expone `error` para que la vista muestre un mensaje.
  */
 import { useEffect, useState } from 'react';
 import { Api } from '../lib/api';
-import { ProductosStore } from '../lib/productos-store';
 
-function normalizarApi(p) {
+const IMAGEN_DEFAULT = 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400';
+
+function normalizarApi(producto) {
   return {
-    id: p.id,
-    nombre: p.nombre,
-    descripcion: p.descripcion || '',
-    imagen: p.imagen || ProductosStore.IMAGEN_DEFAULT,
-    precio: Number(p.precio_venta) || 0,
+    id: producto.id,
+    nombre: producto.nombre,
+    descripcion: producto.descripcion || '',
+    imagen: producto.imagen || IMAGEN_DEFAULT,
+    precio: Number(producto.precio_venta) || 0,
     real: true,
-    raw: p,
-  };
-}
-
-function normalizarEstatico(p) {
-  return {
-    id: p.id,
-    nombre: p.nombre,
-    descripcion: p.descripcion || '',
-    imagen: p.imagen || ProductosStore.IMAGEN_DEFAULT,
-    precio: Number(p.precio) || 0,
-    real: false,
-    raw: null,
+    raw: producto,
   };
 }
 
 export function useCatalogo() {
-  const [estado, setEstado] = useState(() => ({
-    productos: ProductosStore.obtenerTodos().map(normalizarEstatico),
+  const [estado, setEstado] = useState({
+    productos: [],
     categorias: [],
     cargando: true,
-    esDemo: true,
-  }));
+    error: null,
+  });
 
   useEffect(() => {
     let vivo = true;
-    Promise.all([
+
+    Promise.allSettled([
       Api.get('/productos', { per_page: 100, activo: 1 }),
       Api.get('/categorias', { per_page: 100 }),
-    ])
-      .then(([pResp, cResp]) => {
-        const items = Api.unwrapList(pResp).items;
-        if (!vivo) return;
-        if (!items.length) {
-          setEstado((e) => ({ ...e, cargando: false }));
-          return;
-        }
+    ]).then(([productosResp, categoriasResp]) => {
+      if (!vivo) return;
+
+      // Un fallo en categorías no debe ocultar los productos.
+      if (productosResp.status === 'rejected') {
         setEstado({
-          productos: items.map(normalizarApi),
-          categorias: Api.unwrapList(cResp).items,
+          productos: [],
+          categorias: [],
           cargando: false,
-          esDemo: false,
+          error: productosResp.reason || new Error('No se pudo cargar el catálogo.'),
         });
-      })
-      .catch(() => {
-        if (vivo) setEstado((e) => ({ ...e, cargando: false }));
+        return;
+      }
+
+      const items = Api.unwrapList(productosResp.value).items;
+      const categorias = categoriasResp.status === 'fulfilled'
+        ? Api.unwrapList(categoriasResp.value).items
+        : [];
+
+      setEstado({
+        productos: items.map(normalizarApi),
+        categorias,
+        cargando: false,
+        error: null,
       });
+    });
+
     return () => {
       vivo = false;
     };

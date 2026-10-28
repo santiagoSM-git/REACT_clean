@@ -12,6 +12,7 @@ export const Storage = {
     BARISTAS: 'listaBaristas',
     PRODUCTOS: 'inventarioProductos',
     CARRITO: 'kaffaCarrito',
+    FAVORITOS: 'kaffaFavoritos',
     PEDIDOS: 'kaffaPedidos',
     CHATS: 'kaffaChats',
     REPORTES: 'kaffaReportesCaja',

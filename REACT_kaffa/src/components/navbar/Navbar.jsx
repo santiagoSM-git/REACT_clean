@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Auth } from '../../lib/auth';
 import { useCarrito } from '../../context/CarritoContext';
+import { useFavoritos } from '../../context/FavoritosContext';
 import { useChatNoLeidos } from '../../hooks/useChatNoLeidos';
+import { toastInfo } from '../../lib/toast';
+import HeartIcon from '../icons/HeartIcon';
 
 const LINKS = [
   { to: '/', label: 'Inicio', page: 'index', icon: 'home' },
@@ -133,6 +136,7 @@ function Navbar() {
   const esCliente = !!user && Auth.isCliente();
 
   const carrito = useCarrito();
+  const { contador: contadorFavoritos } = useFavoritos();
   const noLeidos = useChatNoLeidos(esCliente);
   const [dropOpen, setDropOpen] = useState(false);
   const userWrapRef = useRef(null);
@@ -196,6 +200,24 @@ function Navbar() {
     navigate('/', { replace: true });
   };
 
+  const irAFavoritos = () => {
+    closeMenu();
+    setDropOpen(false);
+
+    if (contadorFavoritos === 0) {
+      toastInfo('Aún no tienes favoritos. Toca el corazón en un producto.');
+      navigate('/menu');
+      return;
+    }
+
+    if (location.pathname === '/' && location.hash === '#favoritos') {
+      document.getElementById('favoritos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
+    navigate('/#favoritos');
+  };
+
   const firstName = (user?.nombre || '').split(' ')[0];
   const cartCount = carrito?.cart.length || 0;
 
@@ -234,6 +256,16 @@ function Navbar() {
       </ul>
 
       <div className="navbar-actions">
+        <button
+          type="button"
+          className="nav-fav"
+          onClick={irAFavoritos}
+          title="Mis favoritos"
+          aria-label="Mis favoritos"
+        >
+          <HeartIcon className="nav-icon" />
+          {contadorFavoritos > 0 && <span className="nav-badge">{contadorFavoritos}</span>}
+        </button>
         {user ? (
           <>
             {esCliente && carrito && (
@@ -307,6 +339,30 @@ function Navbar() {
           </ul>
           <div className="sidebar-divider"></div>
           <ul className="sidebar-auth">
+            <li>
+              <button
+                type="button"
+                onClick={irAFavoritos}
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  background: 'none',
+                  border: 'none',
+                  color: 'inherit',
+                  font: 'inherit',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                }}
+              >
+                <HeartIcon className="nav-icon" />
+                Favoritos
+                {contadorFavoritos > 0 && <span className="nav-badge">{contadorFavoritos}</span>}
+              </button>
+            </li>
             {user ? (
               <>
                 <li>

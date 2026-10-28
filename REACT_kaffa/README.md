@@ -94,14 +94,12 @@ public/css/           hojas de estilo cargadas en caliente por página (stylesMa
 - Medios de pago virtuales exigen **imagen de comprobante** (se sube directamente a Cloudinary con `lib/cloudinary.js`).
 - Sondeo: pedidos 10 s, chat 5 s, inventario 15 s, caja 30 s.
 - **Asistente IA** (solo admin): chat estilo Messenger en el panel (`AsistenteView.jsx`) que analiza ventas, predice y sugiere marketing; historial persistente en el backend y texto escapado antes de renderizar.
-- Catálogo demo de respaldo (no comprable) cuando la API está caída.
+- **Catálogo real desde la API**: si el administrador no ha creado productos, el Home no muestra la sección de favoritos y el Menú muestra un estado vacío. No se usa catálogo demo en la vista pública.
+- **Favoritos** en `localStorage` (`kaffaFavoritos`): corazón en cada tarjeta y en el navbar/sidebar; la sección “Tus Favoritos” del Home solo aparece cuando el usuario tiene favoritos.
 
 ## Pruebas
 
-<<<<<<< HEAD
 No hay suite automatizada de frontend. Verificación: `npm run lint`, `npm run build` y recorrido manual de rutas públicas, auth, admin y barista (incluyendo tema claro/oscuro y revisar en DevTools que no se dupliquen hojas CSS). Ver `../../docs/08-pruebas.md`.
-=======
-No hay suite automatizada de frontend (solo `npm run lint`). Ver `../../docs/08-pruebas.md`.
 
 ## Manual de uso
 
@@ -123,4 +121,3 @@ pnpm build         # lo incluye en dist/manual
 No edites `public/manual` a mano: es una copia generada. El editor de puntos (`editor.html`) no se publica.
 
 Más detalles de despliegue y limpieza de cuentas demo: [`../../docs/manual-frontend/PUBLICACION.md`](../../docs/manual-frontend/PUBLICACION.md).
->>>>>>> 913c9a43208fd1db857f34a7e305f5ca7b6744bd

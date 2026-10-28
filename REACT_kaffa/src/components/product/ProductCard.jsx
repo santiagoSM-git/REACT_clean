@@ -2,10 +2,14 @@ import { Link } from 'react-router-dom';
 import { formatCurrency } from '../../lib/utils';
 import { Auth } from '../../lib/auth';
 import { useCarrito } from '../../context/CarritoContext';
+import { useFavoritos } from '../../context/FavoritosContext';
+import HeartIcon from '../icons/HeartIcon';
 import CloudinaryImage from '../media/CloudinaryImage';
 
 function ProductCard({ producto }) {
   const carrito = useCarrito();
+  const { esFavorito, toggleFavorito } = useFavoritos();
+  const favorito = esFavorito(producto.id);
   const descripcion = producto.descripcion || 'Deliciosa selección de KAFFA.';
   const resumen =
     descripcion.length > 70 ? `${descripcion.substring(0, 70)}...` : descripcion;
@@ -31,6 +35,16 @@ function ProductCard({ producto }) {
         w={600}
         h={400}
       />
+      <button
+        type="button"
+        className={`product-card-fav${favorito ? ' active' : ''}`}
+        onClick={() => toggleFavorito(producto.id)}
+        aria-label={favorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+        aria-pressed={favorito}
+        title={favorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+      >
+        <HeartIcon filled={favorito} />
+      </button>
       <div className="product-card-body">
         <h3>{producto.nombre}</h3>
         <p>{resumen}</p>

@@ -1,9 +1,10 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useStyles } from '../hooks/useStyles';
 import { PUBLIC } from '../lib/styleManifest';
 import { useBodyClass } from '../hooks/useBodyClass';
-import { ProductosStore } from '../lib/productos-store';
 import { useCatalogo } from '../hooks/useCatalogo';
+import { useFavoritos } from '../context/FavoritosContext';
 import ProductCard from '../components/product/ProductCard';
 import CloudinaryImage from '../components/media/CloudinaryImage';
 import PromoCarouselPopup from '../components/promociones/PromoCarouselPopup';
@@ -12,12 +13,36 @@ function Home() {
   useStyles(PUBLIC);
   useBodyClass('home-page');
 
-  const { productos, esDemo } = useCatalogo();
+  const { productos, cargando, error } = useCatalogo();
+  const { favoritos, podarFavoritos } = useFavoritos();
+  const location = useLocation();
 
-  // Destacados: productos reales de la API; si no hay backend, Cafés de la demo.
-  const destacados = esDemo
-    ? ProductosStore.obtenerTodos().filter((p) => p.categoria === 'Cafés').slice(0, 3)
-    : productos.slice(0, 3);
+  // Limpia favoritos de productos que ya no existen en el catálogo.
+  // Solo cuando la API respondió correctamente.
+  useEffect(() => {
+    if (!cargando && !error) {
+      podarFavoritos(productos.map((producto) => producto.id));
+    }
+  }, [cargando, error, productos, podarFavoritos]);
+
+  // Mantiene el orden en que el usuario marcó los productos.
+  const favoritosProductos = favoritos
+    .map((id) => productos.find((producto) => Number(producto.id) === Number(id)))
+    .filter(Boolean);
+
+  const mostrarFavoritos = !cargando && !error && favoritosProductos.length > 0;
+
+  // Scroll cuando se llega desde el corazón del navbar: /#favoritos
+  useEffect(() => {
+    if (location.hash !== '#favoritos') return undefined;
+    const seccion = document.getElementById('favoritos');
+    if (!seccion) return undefined;
+    const timer = window.setTimeout(
+      () => seccion.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      120,
+    );
+    return () => window.clearTimeout(timer);
+  }, [location.hash, favoritos.length, productos.length]);
 
   return (
     <>
@@ -66,19 +91,21 @@ function Home() {
         </div>
       </section>
 
-      {/* PRODUCTOS DESTACADOS */}
-      <section className="featured">
-        <div className="section-header">
-          <span className="section-tag">Recomendados</span>
-          <h2>Nuestros Favoritos</h2>
-          <p>Los más vendidos de nuestra cafetería, seleccionados por nuestros clientes.</p>
-        </div>
-        <div className="featured-grid" id="productos-container">
-          {destacados.map((producto) => (
-            <ProductCard key={producto.id} producto={producto} />
-          ))}
-        </div>
-      </section>
+      {/* FAVORITOS DEL USUARIO */}
+      {mostrarFavoritos && (
+        <section className="featured" id="favoritos">
+          <div className="section-header">
+            <span className="section-tag">Favoritos</span>
+            <h2>Tus Favoritos</h2>
+            <p>Los productos que marcaste con el corazón.</p>
+          </div>
+          <div className="featured-grid" id="productos-container">
+            {favoritosProductos.map((producto) => (
+              <ProductCard key={producto.id} producto={producto} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* SOBRE NOSOTROS */}
       <section className="about-preview">

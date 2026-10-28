@@ -4,6 +4,7 @@ import Navbar from '../navbar/Navbar';
 import Footer from '../footer/Footer';
 import ClienteWidgets from '../cliente/ClienteWidgets';
 import { CarritoProvider } from '../../context/CarritoContext';
+import { FavoritosProvider } from '../../context/FavoritosContext';
 import { Auth } from '../../lib/auth';
 import { useStyles } from '../../hooks/useStyles';
 import { PUBLIC } from '../../lib/styleManifest';
@@ -23,14 +24,16 @@ function Layout() {
   }, []);
 
   return (
-    <CarritoProvider>
-      <Navbar />
-      <main>
-        <Outlet />
-      </main>
-      <Footer />
-      {esCliente && <ClienteWidgets />}
-    </CarritoProvider>
+    <FavoritosProvider>
+      <CarritoProvider>
+        <Navbar />
+        <main>
+          <Outlet />
+        </main>
+        <Footer />
+        {esCliente && <ClienteWidgets />}
+      </CarritoProvider>
+    </FavoritosProvider>
   );
 }
 
