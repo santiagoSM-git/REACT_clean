@@ -29,6 +29,10 @@ pnpm preview    # previsualizar el build
 
 > En desarrollo, el backend debe estar corriendo (`php artisan serve` en `:8000`): la SPA llama la ruta relativa `/api/v1` y Vite la proxiexa (`vite.config.js`).
 
+## Despliegue con Docker
+
+En producción la SPA se compila dentro del VPS y Nginx la sirve en el mismo origen que la API (`http://IP/` y `http://IP/api/v1`). El `Dockerfile` de esta carpeta construye `dist/` con Node 22 + pnpm y lo copia a Nginx. El runbook completo está en [`../../backend-kaffa/deploy/README-DESPLIEGUE.md`](../../backend-kaffa/deploy/README-DESPLIEGUE.md).
+
 ## Variables de entorno
 
 Copia `.env.example` a `.env.local` (este último no se versiona):
