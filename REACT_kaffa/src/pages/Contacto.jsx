@@ -7,22 +7,30 @@ const DETALLES = [
     titulo: 'Dirección',
     texto: (
       <>
-        Calle 4 #2-80, SENA Centro Comercio y Servicio
+        Calle 4 #2-80, SENA Centro de Comercio y Servicios
         <br />
         Popayán, Colombia
       </>
     ),
   },
-  { icono: '📞', titulo: 'Teléfono', texto: '+57 300 000 0000' },
-  { icono: '✉️', titulo: 'Email', texto: 'contacto@kaffa.com' },
+  {
+    icono: '📞',
+    titulo: 'Teléfono',
+    texto: <a href="tel:+573116364752">+57 311 636 4752</a>,
+  },
+  {
+    icono: '✉️',
+    titulo: 'Email',
+    texto: <a href="mailto:atulande@sena.edu.co">atulande@sena.edu.co</a>,
+  },
   {
     icono: '🕐',
     titulo: 'Horario',
     texto: (
       <>
-        Lunes - Viernes: 8:00 a.m - 5:00 p.m
+        Lunes a viernes: 7:00 a. m. - 6:00 p. m.
         <br />
-        Sábados: 8:00 a.m - 12:00 p.m
+        Sábados y domingos: Cerrado
       </>
     ),
   },
@@ -55,39 +63,17 @@ function Contacto() {
               </div>
             ))}
           </div>
-
-          <div className="contact-social">
-            <h3>Síguenos en redes</h3>
-            <div className="contact-social-links">
-              <a href="#" aria-label="Facebook">
-                Fb
-              </a>
-              <a href="#" aria-label="Instagram">
-                Ig
-              </a>
-              <a href="#" aria-label="TikTok">
-                Tk
-              </a>
-            </div>
-          </div>
         </div>
 
         <div className="contact-image-section">
-          <div
+          <img
             className="contact-map-image"
-            style={{
-              background: '#1a1a1a',
-              borderRadius: '12px',
-              minHeight: '300px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#666',
-              fontSize: '0.9rem',
-            }}
-          >
-            Mapa de ubicación
-          </div>
+            src="/imagenes/mapa-kaffa.jpeg"
+            alt="Mapa de ubicación de KAFFA en el SENA Centro de Comercio y Servicios, Popayán"
+            width={1080}
+            height={1404}
+            loading="lazy"
+          />
         </div>
       </div>
     </section>
